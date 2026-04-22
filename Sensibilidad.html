@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Sensibilidad de Electrodo de pH</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .header { text-align: center; background-color: #8e44ad; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { display: flex; gap: 20px; flex-wrap: wrap; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto; }
+        .panel-control { flex: 1; min-width: 320px; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
+        .panel-grafico { flex: 2; min-width: 500px; display: flex; flex-direction: column; justify-content: center; }
+        
+        label { font-weight: bold; display: block; margin-top: 15px; color: #2c3e50; }
+        input[type="number"], input[type="range"] { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        
+        .buffer-box { background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .buffer-box h4 { margin: 0 0 10px 0; color: #8e44ad; }
+        
+        .result-box { background: #e8f4f8; border-left: 5px solid #3498db; padding: 15px; margin-top: 20px; border-radius: 4px; }
+        .result-item { font-size: 18px; margin: 10px 0; }
+        .efficiency { font-size: 28px; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #bdc3c7; }
+        
+        .status-ok { color: #27ae60; }
+        .status-warn { color: #f39c12; }
+        .status-bad { color: #c0392b; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Medición de Sensibilidad del Electrodo (Calibración a 2 Puntos)</h1>
+        <p>Cálculo de Pendiente (Slope) y Eficiencia Nernstiana</p>
+    </div>
+
+    <div class="container">
+        <div class="panel-control">
+            <label>Temperatura de Calibración: <span id="temp-val">25</span> °C</label>
+            <input type="range" id="temp" min="10" max="50" value="25" oninput="calcular()">
+
+            <div class="buffer-box">
+                <h4>Punto Isopotencial (Buffer Neutro)</h4>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>pH:</label>
+                        <input type="number" id="ph1" value="7.00" step="0.01" oninput="calcular()">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Lectura (mV):</label>
+                        <input type="number" id="mv1" value="5.0" step="0.1" oninput="calcular()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="buffer-box">
+                <h4>Punto de Sensibilidad (Buffer Ácido/Alcalino)</h4>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>pH:</label>
+                        <input type="number" id="ph2" value="4.00" step="0.01" oninput="calcular()">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Lectura (mV):</label>
+                        <input type="number" id="mv2" value="168.0" step="0.1" oninput="calcular()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-box">
+                <div class="result-item">Pendiente Teórica: <strong id="res-teo">59.16</strong> mV/pH</div>
+                <div class="result-item">Pendiente Real: <strong id="res-real">54.33</strong> mV/pH</div>
+                <div class="result-item">Asimetría a pH 7: <strong id="res-asi">5.0</strong> mV</div>
+                <div class="efficiency" id="res-efi">Eficiencia: 91.8%</div>
+            </div>
+        </div>
+
+        <div class="panel-grafico">
+            <canvas id="chartSensibilidad"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('chartSensibilidad').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        { label: 'Comportamiento Ideal (100%)', data: [], borderColor: '#95a5a6', borderDash: [5, 5], fill: false, tension: 0, pointRadius: 0 },
+                        { label: 'Sensibilidad Real del Electrodo', data: [], borderColor: '#8e44ad', borderWidth: 3, fill: false, tension: 0, pointRadius: 6, pointBackgroundColor: '#f1c40f' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', min: 2, max: 12, title: { display: true, text: 'Unidades de pH', font: { weight: 'bold' } } },
+                        y: { min: -350, max: 350, title: { display: true, text: 'Potencial (mV)', font: { weight: 'bold' } } }
+                    },
+                    plugins: { legend: { position: 'top' } }
+                }
+            });
+        }
+
+        function calcular() {
+            // Entradas
+            let temp = parseFloat(document.getElementById('temp').value);
+            let ph1 = parseFloat(document.getElementById('ph1').value);
+            let mv1 = parseFloat(document.getElementById('mv1').value);
+            let ph2 = parseFloat(document.getElementById('ph2').value);
+            let mv2 = parseFloat(document.getElementById('mv2').value);
+
+            document.getElementById('temp-val').innerText = temp;
+
+            // Cálculos
+            let s_teorica = 0.1984 * (temp + 273.15);
+            let s_real = Math.abs((mv1 - mv2) / (ph1 - ph2));
+            let eficiencia = (s_real / s_teorica) * 100;
+            
+            // Asimetría (Se proyecta el valor a pH 7 ideal si el buffer no es exactamente 7)
+            let asimetria = mv1 - (7.00 - ph1) * s_real; 
+
+            // Actualizar Textos
+            document.getElementById('res-teo').innerText = s_teorica.toFixed(2);
+            document.getElementById('res-real').innerText = s_real.toFixed(2);
+            document.getElementById('res-asi').innerText = asimetria.toFixed(1);
+            
+            let efiEl = document.getElementById('res-efi');
+            efiEl.innerText = "Eficiencia: " + eficiencia.toFixed(1) + "%";
+            
+            // Colores por diagnóstico
+            efiEl.className = "efficiency";
+            if(eficiencia >= 95) efiEl.classList.add("status-ok");
+            else if (eficiencia >= 90) efiEl.classList.add("status-warn");
+            else efiEl.classList.add("status-bad");
+
+            // Ecuación de la recta real: y - y1 = m(x - x1)  => y = m(x - x1) + y1
+            // Nota: La pendiente del pH es negativa (a mayor pH, menos mV). 
+            // Así que usamos -s_real.
+            let m_real = (ph2 > ph1) ? (mv2 - mv1)/(ph2 - ph1) : (mv1 - mv2)/(ph1 - ph2);
+            
+            let calcY = (x) => m_real * (x - ph1) + mv1;
+            let calcY_Teo = (x) => -s_teorica * (x - 7.00);
+
+            // Actualizar Gráfico
+            chart.data.datasets[0].data = [{x: 0, y: calcY_Teo(0)}, {x: 14, y: calcY_Teo(14)}];
+            
+            // La línea real pasa por los dos puntos medidos y se proyecta a los bordes
+            chart.data.datasets[1].data = [
+                {x: 0, y: calcY(0)}, 
+                {x: ph1, y: mv1}, 
+                {x: ph2, y: mv2}, 
+                {x: 14, y: calcY(14)}
+            ];
+            
+            chart.update();
+        }
+
+        window.onload = () => { initChart(); calcular(); };
+    </script>
+</body>
+</html>
