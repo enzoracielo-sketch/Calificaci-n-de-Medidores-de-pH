@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización: Verificación de Requisitos de Usuario (pH)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .section { margin-bottom: 25px; padding: 20px; background: #eef2f5; border-radius: 8px; border: 1px solid #ddd; }
+        .section-title { font-size: 1.2em; font-weight: bold; color: #34495e; margin-bottom: 15px; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+        .control-group { margin-bottom: 15px; }
+        label { font-weight: bold; display: block; margin-bottom: 8px; }
+        select, input[type="range"], input[type="number"] { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        .buttons { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        button { flex: 1; padding: 12px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 5px; font-weight: bold; min-width: 150px; transition: background 0.3s; }
+        button:hover { background: #2980b9; }
+        .results-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; padding: 18px; background: #fdfefe; border: 1px solid #bdc3c7; border-radius: 8px; }
+        .result-item { padding: 10px; border-bottom: 1px solid #ecf0f1; }
+        .result-item.full-width { grid-column: 1 / -1; border: none; text-align: center; font-size: 1.1em; background: #f9f9f9; padding: 15px; border-radius: 5px;}
+        .result-item span { font-weight: bold; float: right; color: #2c3e50; }
+        .status { text-align: center; font-size: 1.3em; font-weight: bold; margin-top: 20px; padding: 15px; border-radius: 5px; border: 1px solid transparent; }
+        .status.pass { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .status.fail { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .tolerance { font-size: 0.9em; color: #7f8c8d; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Visualización: Verificación Práctica de URS (1-6)</h2>
+    
+    <div class="section">
+        <div class="control-group">
+            <label>Selecciona el Requisito a verificar:</label>
+            <select id="reqSelector">
+                <option value="range_res">REQ-01 Rango & REQ-02 Resolución de pH</option>
+                <option value="precision_ph">REQ-03 Precisión de pH</option>
+                <option value="range_precision_t">REQ-04 Rango & REQ-05 Precisión de Temperatura</option>
+                <option value="atc">REQ-06 Compensación Automática (ATC)</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="phSection" class="section">
+        <div class="section-title">Pruebas de Medición de pH</div>
+        <div id="bufferControls" class="control-group">
+            <label>Solución Amortiguadora (Buffer) de Referencia Calibrada:</label>
+            <select id="bufferSelect">
+                <option value="4.01">pH 4.01 (NIST @ 25°C)</option>
+                <option value="7.00" selected>pH 7.00 (NIST @ 25°C)</option>
+                <option value="10.01">pH 10.01 (NIST @ 25°C)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Temperatura de Referencia (°C) (Baño Controlado): <span id="tempRefVal_ph">25.0</span> °C</label>
+            <input type="range" id="tempRefSlider_ph" min="0" max="100" value="25" step="0.1">
+        </div>
+        <div id="phInputControls" class="control-group" style="display:none;">
+            <label>Ingresa Lectura Simulada del Medidor (pH): <span class="tolerance">(Tolerancia URS: ±0.01 pH)</span></label>
+            <input type="number" id="phReadInput" value="7.00" step="0.01" min="0" max="14">
+        </div>
+        <div id="rangeVisuals" class="buttons">
+            <button onclick="setRangeTest(0, 7.00)">Verificar Rango Mínimo (pH 0)</button>
+            <button onclick="setRangeTest(7.00, 7.00)">Verificar Punto Central (pH 7)</button>
+            <button onclick="setRangeTest(14.00, 7.00)">Verificar Rango Máximo (pH 14)</button>
+        </div>
+    </div>
+
+    <div id="tempSection" class="section" style="display:none;">
+        <div class="section-title">Pruebas de Medición de Temperatura</div>
+        <div class="control-group">
+            <label>Temperatura de Referencia Patrón (°C) (Baño Controlado): <span id="tempRefVal_t">25.0</span> °C</label>
+            <input type="range" id="tempRefSlider_t" min="0" max="100" value="25" step="0.1">
+        </div>
+        <div class="control-group">
+            <label>Ingresa Lectura Simulada del Medidor (°C): <span class="tolerance">(Tolerancia URS: ±0.5°C)</span></label>
+            <input type="number" id="tempReadInput" value="25.0" step="0.1" min="0" max="100">
+        </div>
+        <div class="buttons">
+            <button onclick="setTempRangeTest(0)">Verificar Rango Mínimo (0°C)</button>
+            <button onclick="setTempRangeTest(50)">Verificar Punto Medio (50°C)</button>
+            <button onclick="setTempRangeTest(95)">Verificar Rango Máximo (95°C)</button>
+        </div>
+    </div>
+
+    <div id="atcSection" class="section" style="display:none;">
+        <div class="section-title">Prueba de Compensación Automática (ATC)</div>
+        <p class="tolerance">Simulamos un amortiguador certificado (ej. pH 7.000 @ 25°C) en un baño a alta temperatura (50°C, valor real ajustado ~6.98) con ATC Activado vs. Desactivado.</p>
+        <div class="control-group">
+            <label>Estado de ATC en el Medidor:</label>
+            <select id="atcStatusSelect">
+                <option value="active" selected>Activado (ATC)</option>
+                <option value="inactive">Desactivado (Manual @ 25°C)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Ingresa Lectura Simulada del Medidor (pH): <span class="tolerance">(Tolerancia URS: ±0.01 pH del valor ajustado por T)</span></label>
+            <input type="number" id="atcReadInput" value="6.98" step="0.01" min="0" max="14">
+        </div>
+    </div>
+
+    <div class="results-panel">
+        <div id="resRefLabel">Estándar de Referencia: <span id="resRef">pH 7.00 (NIST @ 25°C)</span></div>
+        <div id="resTempValLabel">Temperatura Real (Referencia): <span id="resTempRef">25.0 °C</span></div>
+        <div id="resReadLabel">Lectura Simulada (Equipo): <span id="resRead">pH 7.00</span></div>
+        <div id="resDiffLabel">Desviación Calculada: <span id="resDiff">0.00 pH</span></div>
+        <div id="resResolutionLabel" style="display:none;">Resolución Verificada: <span id="resResolution">0.01 pH</span></div>
+        <div id="resRangeLabel" style="display:none;">Rango Cubierto: <span id="resRange">Sí (pH 0-14)</span></div>
+        <div id="resToleranceLabel">Tolerancia Aceptable (URS): <span id="resTolerance">±0.01 pH</span></div>
+    </div>
+
+    <div id="statusBox" class="status pass">ESTADO: CUMPLE (PASA)</div>
+
+</div>
+
+<script>
+    // Variables y datos de referencia
+    const reqSelector = document.getElementById('reqSelector');
+    const phSection = document.getElementById('phSection');
+    const tempSection = document.getElementById('tempSection');
+    const atcSection = document.getElementById('atcSection');
+    const statusBox = document.getElementById('statusBox');
+
+    // Tolerancias URS
+    const TOLERANCE_PH = 0.01;
+    const TOLERANCE_TEMP = 0.5;
+
+    // Tablas de buffers NIST simplificadas (pH vs T)
+    const bufferTables = {
+        "4.01": { 0: 4.01, 25: 4.01, 50: 4.06, 100: 4.23 },
+        "7.00": { 0: 7.12, 25: 7.00, 50: 6.98, 100: 7.01 },
+        "10.01": { 0: 10.32, 25: 10.01, 50: 9.83, 100: 9.70 }
+    };
+
+    // Función principal de actualización
+    function updateVerification() {
+        const selectedReq = reqSelector.value;
+        statusBox.className = "status"; // Reset class
+        
+        // Ocultar/Mostrar secciones y controles según el requisito
+        phSection.style.display = (selectedReq === 'range_res' || selectedReq === 'precision_ph' || selectedReq === 'atc') ? 'block' : 'none';
+        tempSection.style.display = (selectedReq === 'range_precision_t') ? 'block' : 'none';
+        atcSection.style.display = (selectedReq === 'atc') ? 'block' : 'none';
+
+        // Controles específicos de pH
+        document.getElementById('bufferControls').style.display = (selectedReq === 'precision_ph' || selectedReq === 'atc') ? 'block' : 'none';
+        document.getElementById('phInputControls').style.display = (selectedReq === 'precision_ph' || selectedReq === 'atc') ? 'block' : 'none';
+        document.getElementById('rangeVisuals').style.display = (selectedReq === 'range_res') ? 'flex' : 'none';
+
+        // Resetear etiquetas de resultados
+        resetResultLabels();
+
+        if (selectedReq === 'range_res') {
+            verifyRangeResolution();
+        } else if (selectedReq === 'precision_ph') {
+            verifyPrecisionPH();
+        } else if (selectedReq === 'range_precision_t') {
+            verifyPrecisionTemp();
+        } else if (selectedReq === 'atc') {
+            verifyATC();
+        }
+    }
+
+    // Funciones de verificación específicas
+
+    function verifyRangeResolution() {
+        // Asumimos que el usuario ha usado los botones para verificar extremos y central.
+        // Verificamos visualmente que la lectura simulada tiene 2 decimales y cubre el rango.
+        document.getElementById('resResolutionLabel').style.display = 'block';
+        document.getElementById('resRangeLabel').style.display = 'block';
+        document.getElementById('resToleranceLabel').style.display = 'none'; // No aplica tolerancia numérica directa
+        document.getElementById('resRefLabel').style.display = 'none';
+        document.getElementById('resReadLabel').style.display = 'none';
+        document.getElementById('resDiffLabel').style.display = 'none';
+        document.getElementById('resTempValLabel').style.display = 'none';
+
+        document.getElementById('resResolution').innerText = "0.01 pH";
+        document.getElementById('resRange').innerText = "Sí (pH 0-14)";
+        
+        // Estado functional
+        statusBox.className = "status pass";
+        statusBox.innerText = "ESTADO: CUMPLE (PASA URS 1-2)";
+    }
+
+    function verifyPrecisionPH() {
+        const bufferRef = document.getElementById('bufferSelect').value;
+        const tempRef = parseFloat(document.getElementById('tempRefSlider_ph').value);
+        const phRead = parseFloat(document.getElementById('phReadInput').value);
+
+        document.getElementById('tempRefVal_ph').innerText = tempRef.toFixed(1);
+
+        // Obtener el valor de referencia ajustado por temperatura (interpolación lineal simple)
+        let refValuePH = interpolateBufferValue(bufferRef, tempRef);
+
+        const diff = Math.abs(phRead - refValuePH);
+
+        // Actualizar resultados
+        document.getElementById('resRef').innerText = `pH ${refValuePH.toFixed(3)} (NIST ajustado por T)`;
+        document.getElementById('resTempRef').innerText = `${tempRef.toFixed(1)} °C`;
+        document.getElementById('resRead').innerText = `pH ${phRead.toFixed(2)}`;
+        document.getElementById('resDiff').innerText = `${diff.toFixed(3)} pH`;
+        document.getElementById('resTolerance').innerText = `±${TOLERANCE_PH} pH`;
+
+        // Estado Pass/Fail
+        if (diff <= TOLERANCE_PH) {
+            statusBox.className = "status pass";
+            statusBox.innerText = "ESTADO: CUMPLE (PASA URS 3)";
+        } else {
+            statusBox.className = "status fail";
+            statusBox.innerText = "ESTADO: NO CUMPLE (FALLA URS 3)";
+        }
+    }
+
+    function verifyPrecisionTemp() {
+        const tempRef = parseFloat(document.getElementById('tempRefSlider_t').value);
+        const tempRead = parseFloat(document.getElementById('tempReadInput').value);
+
+        document.getElementById('tempRefVal_t').innerText = tempRef.toFixed(1);
+
+        const diff = Math.abs(tempRead - tempRef);
+
+        // Actualizar resultados
+        document.getElementById('resRef').innerText = `Temp Patrón ${tempRef.toFixed(1)} °C`;
+        document.getElementById('resTempRef').innerText = `${tempRef.toFixed(1)} °C`;
+        document.getElementById('resRead').innerText = `${tempRead.toFixed(1)} °C`;
+        document.getElementById('resDiff').innerText = `${diff.toFixed(1)} °C`;
+        document.getElementById('resTolerance').innerText = `±${TOLERANCE_TEMP} °C`;
+
+        // Estado Pass/Fail
+        if (diff <= TOLERANCE_TEMP) {
+            statusBox.className = "status pass";
+            statusBox.innerText = "ESTADO: CUMPLE (PASA URS 4-5)";
+        } else {
+            statusBox.className = "status fail";
+            statusBox.innerText = "ESTADO: NO CUMPLE (FALLA URS 4-5)";
+        }
+    }
+
+    function verifyATC() {
+        // Simulamos un buffer conocido (e.g., pH 7.000 @ 25°C) a alta temperatura (50°C, valor real ~6.98)
+        const atcStatus = document.getElementById('atcStatusSelect').value;
+        const atcRead = parseFloat(document.getElementById('atcReadInput').value);
+
+        const tempRef = 50.0; // Temperatura de referencia fija para la prueba de ATC
+        const bufferRef = "7.00"; // Buffer de referencia fijo
+
+        // Valor de referencia ajustado por temperatura (real a 50°C)
+        let refValueAdjusted = 6.980; // Simplificado para NIST pH 7.000 @ 50°C
+        
+        // Valor de referencia nominal (que leería sin ATC o ATC manual mal configurada)
+        let refValueNominal = 7.000;
+
+        let targetValue = (atcStatus === 'active') ? refValueAdjusted : refValueNominal;
+        const diff = Math.abs(atcRead - targetValue);
+
+        // Actualizar resultados
+        document.getElementById('resRefLabel').style.display = 'block';
+        document.getElementById('resTempValLabel').style.display = 'block';
+        document.getElementById('resTempValLabel').querySelector('span').innerText = `${tempRef.toFixed(1)} °C`;
+
+        if (atcStatus === 'active') {
+            document.getElementById('resRef').innerText = `pH ${refValueAdjusted.toFixed(3)} (NIST ajustado @ 50°C)`;
+            document.getElementById('resTolerance').innerText = `±${TOLERANCE_PH} pH (del valor ajustado)`;
+        } else {
+            document.getElementById('resRef').innerText = `pH ${refValueNominal.toFixed(3)} (NIST Nominal @ 25°C - sin compensación)`;
+            document.getElementById('resTolerance').innerText = `±${TOLERANCE_PH} pH (del valor nominal @ 25°C)`;
+        }
+
+        document.getElementById('resRead').innerText = `pH ${atcRead.toFixed(2)}`;
+        document.getElementById('resDiff').innerText = `${diff.toFixed(3)} pH`;
+
+        // Estado Pass/Fail
+        if (diff <= TOLERANCE_PH) {
+            statusBox.className = "status pass";
+            statusBox.innerText = `ESTADO: CUMPLE (PASA URS 6 - ATC ${atcStatus === 'active' ? 'Activado' : 'Desactivado'})`;
+        } else {
+            statusBox.className = "status fail";
+            statusBox.innerText = `ESTADO: NO CUMPLE (FALLA URS 6 - ATC ${atcStatus === 'active' ? 'Activado' : 'Desactivado'})`;
+        }
+    }
+
+    // Funciones auxiliares
+
+    function setRangeTest(phInput, phReadInput) {
+        // Esta función no actualiza inputs numéricos, solo demuestra visualmente
+        verifyRangeResolution();
+    }
+
+    function setTempRangeTest(tempRef) {
+        document.getElementById('tempRefSlider_t').value = tempRef;
+        document.getElementById('tempReadInput').value = tempRef.toFixed(1); // Simula lectura perfecta
+        verifyPrecisionTemp();
+    }
+
+    function resetResultLabels() {
+        document.getElementById('resRefLabel').style.display = 'block';
+        document.getElementById('resTempValLabel').style.display = 'block';
+        document.getElementById('resReadLabel').style.display = 'block';
+        document.getElementById('resDiffLabel').style.display = 'block';
+        document.getElementById('resResolutionLabel').style.display = 'none';
+        document.getElementById('resRangeLabel').style.display = 'none';
+        document.getElementById('resToleranceLabel').style.display = 'block';
+    }
+
+    function interpolateBufferValue(buffer, temp) {
+        const table = bufferTables[buffer];
+        const temps = Object.keys(table).map(Number).sort((a, b) => a - b);
+        
+        if (temp <= temps[0]) return table[temps[0]];
+        if (temp >= temps[temps.length - 1]) return table[temps[temps.length - 1]];
+
+        for (let i = 0; i < temps.length - 1; i++) {
+            if (temp >= temps[i] && temp <= temps[i + 1]) {
+                const t0 = temps[i];
+                const t1 = temps[i + 1];
+                const v0 = table[t0];
+                const v1 = table[t1];
+                // Interpolación lineal
+                return v0 + (temp - t0) * (v1 - v0) / (t1 - t0);
+            }
+        }
+        return table[temps[0]]; // Fallback
+    }
+
+    // Event Listeners
+    reqSelector.addEventListener('change', updateVerification);
+    
+    // pH Precisión
+    document.getElementById('bufferSelect').addEventListener('change', verifyPrecisionPH);
+    document.getElementById('tempRefSlider_ph').addEventListener('input', verifyPrecisionPH);
+    document.getElementById('phReadInput').addEventListener('input', verifyPrecisionPH);
+
+    // Temp Precisión
+    document.getElementById('tempRefSlider_t').addEventListener('input', verifyPrecisionTemp);
+    document.getElementById('tempReadInput').addEventListener('input', verifyPrecisionTemp);
+
+    // ATC
+    document.getElementById('atcStatusSelect').addEventListener('change', verifyATC);
+    document.getElementById('atcReadInput').addEventListener('input', verifyATC);
+
+    // Inicializar
+    updateVerification();
+</script>
+</body>
+</html>
