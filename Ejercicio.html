@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller de Calificación de Desempeño (PQ) - Medidor de pH</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --border: #bdc3c7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 25px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        /* Main Container */
+        .main-container {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .sidebar h2 {
+            font-size: 1.1em;
+            color: var(--secondary);
+            margin-top: 0;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 8px;
+        }
+
+        .test-btn {
+            background-color: var(--light);
+            color: var(--secondary);
+            border: 1px solid var(--border);
+            padding: 12px 15px;
+            border-radius: 6px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-btn:hover {
+            background-color: #e0e6e9;
+        }
+
+        .test-btn.active {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #95a5a6; /* Pendiente */
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+
+        .status-pasa { background-color: var(--success); }
+        .status-falla { background-color: var(--danger); }
+
+        /* Content Area */
+        .content-area {
+            flex-grow: 1;
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 100px;
+        }
+
+        .test-panel h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .test-desc {
+            background-color: #eaf2f8;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 5px solid var(--accent);
+            margin-bottom: 25px;
+            color: var(--secondary);
+        }
+
+        /* Data Entry and Results Tables */
+        .data-section, .results-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        table.data-table th, table.data-table td {
+            border: 1px solid var(--border);
+            padding: 10px;
+            text-align: left;
+        }
+
+        table.data-table th {
+            background-color: var(--light);
+            color: var(--secondary);
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Importante para el ancho */
+        }
+
+        .action-bar {
+            text-align: right;
+            margin-top: 15px;
+        }
+
+        .verify-btn {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .verify-btn:hover {
+            background-color: #219150;
+        }
+
+        /* Results Display */
+        .results-box {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        .result-value {
+            font-size: 1.1em;
+            color: var(--primary);
+        }
+
+        .result-pasa { color: var(--success); font-weight: bold; }
+        .result-falla { color: var(--danger); font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Taller: Calificación de Desempeño (PQ) del Medidor de pH</h1>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <h2>Pruebas de Protocolo</h2>
+            <button class="test-btn active" id="btn-linearity" onclick="showTest('linearity')">
+                Prueba de Linealidad
+                <div class="status-light" id="status-linearity"></div>
+            </button>
+            <button class="test-btn" id="btn-repeatability" onclick="showTest('repeatability')">
+                Prueba de Repetibilidad
+                <div class="status-light" id="status-repeatability"></div>
+            </button>
+            <button class="test-btn" id="btn-accuracy" onclick="showTest('accuracy')">
+                Prueba de Exactitud
+                <div class="status-light" id="status-accuracy"></div>
+            </button>
+        </div>
+
+        <div class="content-area" id="content-area">
+            
+            <div class="test-panel" id="panel-linearity">
+                <h2>1. Prueba de Linealidad y Sensibilidad (Slope)</h2>
+                <p class="test-desc">Calibración con tres búferes certificados (7.00, 4.01, 10.01) para determinar la pendiente real y la eficiencia del electrodo.</p>
+                
+                <div class="data-section">
+                    <span class="section-title">Ingreso de Datos (Taller)</span>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Búfer (pH)</th>
+                                <th>Potencial Teórico (mV)</th>
+                                <th>Potencial Medido (mV)</th>
+                            }
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>7.00</td>
+                                <td>0.0</td>
+                                <td><input type="number" id="mv7" value="5.2" step="0.1"></td>
+                            }
+                            <tr>
+                                <td>4.01</td>
+                                <td>+177.5</td>
+                                <td><input type="number" id="mv4" value="178.6" step="0.1"></td>
+                            }
+                            <tr>
+                                <td>10.01</td>
+                                <td>-177.5</td>
+                                <td><input type="number" id="mv10" value="-169.3" step="0.1"></td>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="action-bar">
+                        <button class="verify-btn" onclick="verifyLinearity()">Verificar Linealidad</button>
+                    </div>
+                </div>
+
+                <div class="results-section results-box" id="results-linearity" style="display: none;">
+                    <span class="section-title">Análisis de Resultados</span>
+                    <div class="result-item">
+                        <span class="result-label">Pendiente Real Calculada:</span>
+                        <span class="result-value" id="calcSlope">0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">% de Eficiencia:</span>
+                        <span class="result-value" id="calcEfficiency">0.00%</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Criterio de Aceptación:</span>
+                        <span class="result-value">95% ≤ S ≤ 105%</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Resultado:</span>
+                        <span class="result-value" id="resLinearity"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-panel" id="panel-repeatability" style="display: none;">
+                <h2>2. Prueba de Repetibilidad (Precisión)</h2>
+                <p class="test-desc">Seis mediciones consecutivas de una solución control de pH 7.00 para evaluar la consistencia del sistema y del analista.</p>
+                
+                <div class="data-section">
+                    <span class="section-title">Ingreso de Lecturas (Taller)</span>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Lectura #</th>
+                                <th>Valor de pH Medido</th>
+                            }
+                        </thead>
+                        <tbody>
+                            <tr><td>1</td><td><input type="number" class="repeat-val" value="7.01" step="0.01"></td></tr>
+                            <tr><td>2</td><td><input type="number" class="repeat-val" value="7.02" step="0.01"></td></tr>
+                            <tr><td>3</td><td><input type="number" class="repeat-val" value="7.01" step="0.01"></td></tr>
+                            <tr><td>4</td><td><input type="number" class="repeat-val" value="7.00" step="0.01"></td></tr>
+                            <tr><td>5</td><td><input type="number" class="repeat-val" value="7.02" step="0.01"></td></tr>
+                            <tr><td>6</td><td><input type="number" class="repeat-val" value="7.01" step="0.01"></td></tr>
+                        </tbody>
+                    </table>
+                    <div class="action-bar">
+                        <button class="verify-btn" onclick="verifyRepeatability()">Verificar Repetibilidad</button>
+                    </div>
+                </div>
+
+                <div class="results-section results-box" id="results-repeatability" style="display: none;">
+                    <span class="section-title">Análisis Estadístico</span>
+                    <div class="result-item">
+                        <span class="result-label">Promedio:</span>
+                        <span class="result-value" id="calcMean">0.000</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Desviación Estándar (DS):</span>
+                        <span class="result-value" id="calcSD">0.0000</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Criterio de Aceptación:</span>
+                        <span class="result-value">DS ≤ 0.02</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Resultado:</span>
+                        <span class="result-value" id="resRepeatability"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-panel" id="panel-accuracy" style="display: none;">
+                <h2>3. Prueba de Exactitud en Muestra Real (Recuperación)</h2>
+                <p class="test-desc">Prueba de adición (spike) de un ácido conocido a la muestra real para verificar si el electrodo detecta el cambio de pH correctamente en esa matriz.</p>
+                
+                <div class="data-section">
+                    <span class="section-title">Datos de la Prueba (Taller)</span>
+                    <table class="data-table">
+                        <tbody>
+                            <tr>
+                                <td><strong>pH Muestra Original:</strong></td>
+                                <td><input type="number" id="pHOrig" value="7.10" step="0.01"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cambio Teórico Esperado (Spike):</strong></td>
+                                <td><input type="number" id="pHSpikeTeor" value="-1.00" step="0.01"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>pH Medido tras Adición:</strong></td>
+                                <td><input type="number" id="pHAdic" value="6.15" step="0.01"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="action-bar">
+                        <button class="verify-btn" onclick="verifyAccuracy()">Verificar Exactitud</button>
+                    </div>
+                </div>
+
+                <div class="results-section results-box" id="results-accuracy" style="display: none;">
+                    <span class="section-title">Análisis de Recuperación</span>
+                    <div class="result-item">
+                        <span class="result-label">Cambio Observado:</span>
+                        <span class="result-value" id="calcChange">0.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">% de Recuperación (%R):</span>
+                        <span class="result-value" id="calcRecovery">0.00%</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Criterio de Aceptación:</span>
+                        <span class="result-value">98% ≤ R ≤ 102%</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Resultado:</span>
+                        <span class="result-value" id="resAccuracy"></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // --- Navegación entre paneles ---
+    function showTest(testId) {
+        // Ocultar todos los paneles
+        const panels = document.querySelectorAll('.test-panel');
+        panels.forEach(p => p.style.display = 'none');
+        
+        // Desactivar todos los botones
+        const buttons = document.querySelectorAll('.test-btn');
+        buttons.forEach(b => b.classList.remove('active'));
+
+        // Mostrar panel seleccionado y activar botón
+        document.getElementById('panel-' + testId).style.display = 'block';
+        document.getElementById('btn-' + testId).classList.add('active');
+    }
+
+    // --- Lógica de Pruebas ---
+
+    // Constante Pendiente Teórica a 25°C (mV/pH)
+    const NERNST_SLOPE = 59.16;
+
+    function verifyLinearity() {
+        // Recoger datos
+        const mv7 = parseFloat(document.getElementById('mv7').value);
+        const mv4 = parseFloat(document.getElementById('mv4').value);
+        
+        // Calcular pendiente real (mV entre pH 7 y pH 4)
+        // Delta pH = 7.00 - 4.01 = 2.99
+        const deltaPH = 7.00 - 4.01;
+        const deltaMV = mv4 - mv7; // Positivo, porque ácido es más positivo
+        const slopeReal = deltaMV / deltaPH;
+
+        // Calcular % Eficiencia
+        const efficiency = (slopeReal / NERNST_SLOPE) * 100;
+
+        // Mostrar resultados
+        document.getElementById('calcSlope').innerText = slopeReal.toFixed(2);
+        document.getElementById('calcEfficiency').innerText = efficiency.toFixed(1) + '%';
+        
+        const resLabel = document.getElementById('resLinearity');
+        const statusLight = document.getElementById('status-linearity');
+
+        // Criterio 95-105%
+        if (efficiency >= 95 && efficiency <= 105) {
+            resLabel.innerText = 'PASA';
+            resLabel.className = 'result-value result-pasa';
+            statusLight.className = 'status-light status-pasa';
+        } else {
+            resLabel.innerText = 'FALLA';
+            resLabel.className = 'result-value result-falla';
+            statusLight.className = 'status-light status-falla';
+        }
+
+        document.getElementById('results-linearity').style.display = 'block';
+    }
+
+    function verifyRepeatability() {
+        // Recoger datos
+        const inputs = document.querySelectorAll('.repeat-val');
+        let values = [];
+        inputs.forEach(i => values.push(parseFloat(i.value)));
+
+        // Calcular Promedio
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+
+        // Calcular Desviación Estándar (Poblacional)
+        const sd = Math.sqrt(values.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / values.length);
+
+        // Mostrar resultados
+        document.getElementById('calcMean').innerText = mean.toFixed(3);
+        document.getElementById('calcSD').innerText = sd.toFixed(4);
+        
+        const resLabel = document.getElementById('resRepeatability');
+        const statusLight = document.getElementById('status-repeatability');
+
+        // Criterio DS <= 0.02
+        if (sd <= 0.02) {
+            resLabel.innerText = 'PASA';
+            resLabel.className = 'result-value result-pasa';
+            statusLight.className = 'status-light status-pasa';
+        } else {
+            resLabel.innerText = 'FALLA';
+            resLabel.className = 'result-value result-falla';
+            statusLight.className = 'status-light status-falla';
+        }
+
+        document.getElementById('results-repeatability').style.display = 'block';
+    }
+
+    function verifyAccuracy() {
+        // Recoger datos
+        const pHOrig = parseFloat(document.getElementById('pHOrig').value);
+        const pHSpikeTeor = parseFloat(document.getElementById('pHSpikeTeor').value);
+        const pHAdic = parseFloat(document.getElementById('pHAdic').value);
+
+        // Calcular Cambio Observado
+        const changeObs = pHAdic - pHOrig;
+
+        // Calcular % de Recuperación (%R)
+        // Usamos valor absoluto para el cambio teórico si es negativo
+        const recovery = (changeObs / pHSpikeTeor) * 100;
+
+        // Mostrar resultados
+        document.getElementById('calcChange').innerText = changeObs.toFixed(2);
+        document.getElementById('calcRecovery').innerText = recovery.toFixed(1) + '%';
+        
+        const resLabel = document.getElementById('resAccuracy');
+        const statusLight = document.getElementById('status-accuracy');
+
+        // Criterio 98-102%
+        if (recovery >= 98 && recovery <= 102) {
+            resLabel.innerText = 'PASA';
+            resLabel.className = 'result-value result-pasa';
+            statusLight.className = 'status-light status-pasa';
+        } else {
+            resLabel.innerText = 'FALLA';
+            resLabel.className = 'result-value result-falla';
+            statusLight.className = 'status-light status-falla';
+        }
+
+        document.getElementById('results-accuracy').style.display = 'block';
+    }
+
+</script>
+</body>
+</html>
