@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Calificación de Instalación (IQ)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; color: #333; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Encabezado y Progreso */
+        .header { background: #2c3e50; color: white; padding: 15px 25px; flex-shrink: 0; }
+        .header h1 { margin: 0 0 10px 0; font-size: 1.5em; }
+        .progress-container { display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; }
+        .progress-text { font-weight: bold; min-width: 120px; }
+        .progress-bar-bg { flex-grow: 1; height: 12px; background: #ecf0f1; border-radius: 6px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: #27ae60; width: 0%; transition: width 0.3s ease; }
+        .stats { display: flex; gap: 15px; font-size: 0.9em; }
+        .stat-pasa { color: #2ecc71; }
+        .stat-falla { color: #e74c3c; }
+
+        /* Cuerpo del Dashboard */
+        .dashboard { display: flex; flex-grow: 1; overflow: hidden; background: white; border-radius: 8px; margin: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* Lista Lateral (Izquierda) */
+        .sidebar { width: 30%; background: #f8f9fa; border-right: 1px solid #e1e4e8; overflow-y: auto; padding: 10px; }
+        .sidebar h2 { font-size: 1em; color: #7f8c8d; text-transform: uppercase; margin: 15px 10px 5px 10px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+        .urs-item { padding: 12px 15px; border-radius: 6px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; }
+        .urs-item:hover { background: #e9ecef; }
+        .urs-item.active { background: #e3f2fd; border-color: #90caf9; font-weight: bold; }
+        .urs-item.completed.pasa { border-left: 4px solid #2ecc71; }
+        .urs-item.completed.falla { border-left: 4px solid #e74c3c; }
+        .urs-id { font-weight: bold; color: #2c3e50; margin-right: 10px; }
+        .urs-desc { color: #555; font-size: 0.9em; flex-grow: 1; }
+        .status-badge { font-size: 0.75em; padding: 3px 8px; border-radius: 10px; color: white; font-weight: bold; text-transform: uppercase; margin-left: 10px;}
+        .status-badge.Pendiente { background: #95a5a6; }
+        .status-badge.Pasa { background: #2ecc71; }
+        .status-badge.Falla { background: #e74c3c; }
+
+        /* Panel Principal (Centro) */
+        .main-panel { width: 70%; padding: 30px; display: flex; flex-direction: column; overflow-y: auto; }
+        .empty-state { text-align: center; color: #95a5a6; margin-top: 100px; font-size: 1.2em; }
+        .assessment-area h2 { margin-top: 0; color: #2c3e50; }
+        .category-tag { display: inline-block; background: #e1e4e8; color: #586069; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; margin-bottom: 15px; }
+        .urs-requirement { font-size: 1.2em; color: #2980b9; background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 5px solid #3498db; margin-bottom: 25px; }
+        .data-comparison { display: flex; flex-direction: column; gap: 20px; margin-bottom: 30px; }
+        .data-block { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; }
+        .data-block strong { color: #555; display: block; margin-bottom: 8px; }
+        .data-text { font-family: 'Consolas', 'Monaco', monospace; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ddd; min-height: 40px; }
+        
+        /* Controles de Usuario */
+        .controls { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e1e4e8; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .decision-group { margin-bottom: 15px; }
+        .decision-label { font-weight: bold; display: block; margin-bottom: 10px; color: #555; }
+        .btn-group { display: flex; gap: 10px; }
+        .btn-check { padding: 10px 20px; border: 2px solid #ccc; border-radius: 6px; background: white; font-weight: bold; cursor: pointer; transition: all 0.2s; flex-grow: 1; text-align: center; }
+        .btn-check:hover { background: #f8f9fa; border-color: #bbb; }
+        .btn-check.active-pasa { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .btn-check.active-falla { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .comment-group label { font-weight: bold; display: block; margin-bottom: 8px; color: #555; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; min-height: 80px; box-sizing: border-box; }
+        .btn-register { display: block; width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 1.1em; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
+        .btn-register:hover { background: #2980b9; }
+
+        /* Log de Deficiencias y Conclusión */
+        .lower-panels { flex-shrink: 0; padding: 0 20px 20px 20px; display: flex; flex-direction: column; gap: 20px; }
+        .deficiency-log, .conclusion-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .deficiency-log h3, .conclusion-panel h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .log-container { max-height: 200px; overflow-y: auto; background: #f8f9fa; border: 1px solid #e1e4e8; border-radius: 4px; padding: 10px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9em; }
+        .log-entry { padding: 5px 0; border-bottom: 1px solid #eee; color: #555; }
+        .log-entry.falla { color: #c0392b; font-weight: bold; }
+        .conclusion-controls { display: flex; flex-direction: column; gap: 15px; }
+        .final-status-group select { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; font-size: 1em; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Dashboard Interactivo de Calificación de Instalación (IQ) - Medidor de pH</h1>
+        <div class="progress-container">
+            <span class="progress-text">Progreso IQ: <span id="completed-count">0</span> / 23</span>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-bar"></div>
+            </div>
+            <div class="stats">
+                <span class="stat-pasa">Pasa: <span id="pasa-count">0</span></span>
+                <span class="stat-falla">Falla: <span id="falla-count">0</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="sidebar" id="urs-list">
+            <h2>A. Verificación de Suministro</h2>
+            <h2>B. Verificación de Entorno</h2>
+            <h2>C. Operación y Software</h2>
+            <h2>D. Documentación y Soporte</h2>
+            </div>
+
+        <div class="main-panel" id="assessment-panel">
+            <div class="empty-state">
+                <p>👋 ¡Bienvenido al Simulador de IQ!</p>
+                <p>Selecciona un requerimiento de la lista izquierda para comenzar la auditoría física.</p>
+                <p>Compara la <strong>Referencia (URS/OC)</strong> contra lo <strong>Encontrado</strong> físicamente para tomar tu decisión.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="lower-panels">
+        <div class="deficiency-log">
+            <h3>Deficiencias y Observaciones Registradas</h3>
+            <div class="log-container" id="deficiency-log-container">
+                <div class="empty-state" style="margin-top: 20px; font-size: 1em;">No hay deficiencias registradas aún.</div>
+            </div>
+        </div>
+
+        <div class="conclusion-panel">
+            <h3>Conclusión Final de la Calificación de Instalación (IQ)</h3>
+            <div class="conclusion-controls">
+                <div class="final-status-group">
+                    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Estado de IQ:</label>
+                    <select id="final-iq-status">
+                        <option value="Pendiente">Pendiente de completar revisión...</option>
+                        <option value="Aprobado">APROBADO (Todos los requisitos críticos cumplen)</option>
+                        <option value="Aprobado Condicionado">APROBADO CONDICIONADO (Desviaciones no críticas pendientes de cierre)</option>
+                        <option value="Rechazado">RECHAZADO (Falla en requisito crítico u Obligatorio)</option>
+                    </select>
+                </div>
+                <div class="comment-group">
+                    <label>Justificación Final / Resumen de Cierre:</label>
+                    <textarea id="final-justification" placeholder="Resuma el estado general del IQ, referenciando las desviaciones críticas si las hay."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Base de Datos de los 23 URS (Referencia vs Encontrado Simulado) ---
+    const ursData = [
+        // A. Suministro (Basado en OC-2024-08 y Hallazgos Simulados)
+        { id: 'REQ-01', cat: 'Suministro', desc: 'Medidor de pH de Mesa', ref: '1 unidad (Marca/Modelo según DQ)', found: '1 unidad recibida. Marca y modelo coinciden. Sin daños físicos.', class: 'Obligatorio' },
+        { id: 'REQ-12', cat: 'Suministro', desc: 'Electrodo de pH (BNC)', ref: '1 pieza, conector BNC estándar.', found: '1 pieza recibida. Conector BNC correcto. Bulbo de vidrio intacto y húmedo.', class: 'Obligatorio' },
+        { id: 'REQ-13', cat: 'Suministro', desc: 'Sonda de Temperatura ATC', ref: '1 pieza, independiente.', found: '**FALTANTE.** No se encuentra en la caja del equipo.', class: 'Obligatorio' },
+        { id: 'REQ-07', cat: 'Suministro', desc: 'Brazo porta-electrodos', ref: '1 pieza, articulado.', found: '1 pieza recibida. Completo y funcional.', class: 'Obligatorio' },
+        { id: 'REQ-19', cat: 'Suministro', desc: 'Manual de Instrucciones', ref: '1 copia, en Español.', found: '1 copia recibida, pero está **SOLO EN INGLÉS**.', class: 'Obligatorio' },
+        { id: 'REQ-20', cat: 'Suministro', desc: 'Certificado de Calibración', ref: 'De fábrica, trazable.', found: '1 certificado recibido. Número de serie coincide con el equipo.', class: 'Obligatorio' },
+        
+        // B. Entorno (Basado en Manual vs Mesa 3 Simulada)
+        { id: 'REQ-04', cat: 'Entorno', desc: 'Temperatura Ambiental', ref: '15°C - 35°C (según manual)', found: '22°C (Medido con termómetro calibrado). Cumple.', class: 'Obligatorio' },
+        { id: 'REQ-05', cat: 'Entorno', desc: 'Humedad Relativa', ref: '20% - 80%, sin condensación', found: '45% (Medido con higrómetro calibrado). Cumple.', class: 'Obligatorio' },
+        { id: 'REQ-15', cat: 'Entorno', desc: 'Fuente de Alimentación', ref: '110V - 220V AC', found: '110V AC disponible en contacto de pared regulado. Cumple.', class: 'Obligatorio' },
+        { id: 'REQ-14', cat: 'Entorno', desc: 'Ubicación Física (Vibración)', ref: 'Superficie firme, nivelada, **alejada de equipos que generen vibración**.', found: 'Superficie firme y nivelada, pero **PRESENCIA DE CENTRÍFUGA VIBRATORIA A 20 CM** en la misma mesa.', class: 'Obligatorio' },
+
+        // C. Rendimiento y Software (Verificación Teórica/Ficha Técnica)
+        { id: 'REQ-01b', cat: 'Rendimiento', desc: 'Rango de pH', ref: '0.00 a 14.00 pH', found: 'Confirmado en Ficha Técnica (Pág. 4): Rango de -2.00 a 16.00 pH. CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-02', cat: 'Rendimiento', desc: 'Resolución de pH', ref: 'Mínima de 0.01 pH', found: 'Confirmado en Manual (Pág. 12): Seleccionable 0.1 / 0.01 / 0.001 pH. CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-03', cat: 'Rendimiento', desc: 'Precisión de pH', ref: '±0.01 pH', found: 'Confirmado en Ficha Técnica (Pág. 4): ±0.002 pH. CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-06', cat: 'Rendimiento', desc: 'Compensación Auto (ATC)', ref: 'Incluida y funcional', found: 'Ficha Técnica indica ATC integrado. **No verificable físicamente por falta de sonda ATC (ver REQ-13).**', class: 'Obligatorio' },
+        { id: 'REQ-07b', cat: 'Operación', desc: 'Puntos de Calibración', ref: 'Al menos 3 puntos', found: 'Manual (Pág. 22): Calibración de hasta 5 puntos. CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-08', cat: 'Operación', desc: 'Reconocimiento de Buffers', ref: 'NIST/USA automáticos', found: 'Manual (Pág. 24): Reconoce grupos NIST, USA, DIN. CUMPLE.', class: 'Deseable' },
+        { id: 'REQ-09', cat: 'Interfaz', desc: 'Tipo de Pantalla', ref: 'LCD retroiluminada', found: 'Verificado físicamente: Pantalla LCD con retroiluminación funcional. CUMPLE.', class: 'Deseable' },
+        { id: 'REQ-10', cat: 'Datos', desc: 'Registro de Datos', ref: 'Min. 500 lecturas con fecha/hora', found: 'Ficha Técnica (Pág. 5): Memoria para 1000 registros GLP. CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-11', cat: 'Datos', desc: 'Compatibilidad con GLP', ref: 'Sí', found: 'Manual Sección 5: Funciones GLP incluidas (ID equipo, usuario, fecha calibración). CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-16', cat: 'Software', desc: 'Conectividad PC', ref: 'USB o RS232', found: 'Verificado físicamente: Puerto USB-B presente en panel trasero. CUMPLE.', class: 'Deseable' },
+        { id: 'REQ-17', cat: 'Software', desc: 'Exportación de Datos', ref: 'Excel/PDF', found: 'Ficha Técnica: Exporta via software incluido a formato .csv (compatible Excel). CUMPLE.', class: 'Deseable' },
+        { id: 'REQ-18', cat: 'Software', desc: 'Seguridad (Contraseñas)', ref: 'Gestión de usuarios/passwords', found: 'Manual Sección 6: **NO CUENTA CON GESTIÓN DE USUARIOS.** Acceso libre.', class: 'Deseable' },
+
+        // D. Soporte y Regulatorio
+        { id: 'REQ-21', cat: 'Soporte', desc: 'Garantía', ref: 'Mínima de 1 año', found: 'Póliza de garantía incluida: 2 años en equipo, 6 meses en electrodo. CUMPLE.', class: 'Obligatorio' },
+        { id: 'REQ-22', cat: 'Soporte', desc: 'Soporte Técnico', ref: 'Local disponible', found: 'Confirmado con proveedor: Centro de servicio autorizado en la ciudad. CUMPLE.', class: 'Deseable' },
+        { id: 'REQ-23', cat: 'Regulatorio', desc: 'Normas CE', ref: 'Cumplimiento', found: 'Marcado CE presente en la etiqueta trasera del equipo y declaración de conformidad incluida. CUMPLE.', class: 'Obligatorio' }
+    ];
+
+    // --- Estado de la Aplicación ---
+    let appState = {
+        currentUrsId: null,
+        decisions: {}, // { ursId: 'Pasa'/'Falla' }
+        comments: {},   // { ursId: 'texto' }
+        completedCount: 0,
+        pasaCount: 0,
+        fallaCount: 0
+    };
+
+    // --- Inicialización ---
+    document.addEventListener('DOMContentLoaded', () => {
+        renderURSList();
+        updateProgress();
+    });
+
+    // --- Funciones de Renderizado ---
+
+    function renderURSList() {
+        const listContainer = document.getElementById('urs-list');
+        listContainer.innerHTML = ''; // Limpiar
+
+        const categories = {
+            'Suministro': 'A. Verificación de Suministro',
+            'Entorno': 'B. Verificación de Entorno',
+            'Rendimiento': 'C. Operación y Software',
+            'Operación': 'C. Operación y Software',
+            'Interfaz': 'C. Operación y Software',
+            'Datos': 'C. Operación y Software',
+            'Software': 'C. Operación y Software',
+            'Soporte': 'D. Documentación y Soporte',
+            'Regulatorio': 'D. Documentación y Soporte'
+        };
+
+        let currentCategoryHeader = '';
+
+        ursData.forEach(urs => {
+            // Añadir cabeceras de categoría si cambian
+            const mainCat = categories[urs.cat];
+            if (mainCat !== currentCategoryHeader) {
+                const header = document.createElement('h2');
+                header.textContent = mainCat;
+                listContainer.appendChild(header);
+                currentCategoryHeader = mainCat;
+            }
+
+            const status = appState.decisions[urs.id] || 'Pendiente';
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `urs-item ${appState.currentUrsId === urs.id ? 'active' : ''} ${status !== 'Pendiente' ? 'completed ' + status.toLowerCase() : ''}`;
+            itemDiv.onclick = () => selectURS(urs.id);
+
+            itemDiv.innerHTML = `
+                <div>
+                    <span class="urs-id">${urs.id}</span>
+                    <span class="urs-desc">${urs.desc}</span>
+                </div>
+                <span class="status-badge ${status}">${status}</span>
+            `;
+            listContainer.appendChild(itemDiv);
+        });
+    }
+
+    function selectURS(ursId) {
+        appState.currentUrsId = ursId;
+        const urs = ursData.find(u => u.id === ursId);
+        renderURSList(); // Actualizar resaltado en la lista
+        renderAssessmentPanel(urs);
+    }
+
+    function renderAssessmentPanel(urs) {
+        const panel = document.getElementById('assessment-panel');
+        const decision = appState.decisions[urs.id] || null;
+        const comment = appState.comments[urs.id] || '';
+        const classTag = urs.class === 'Obligatorio' ? '<span class="tag-ob">[Obligatorio]</span>' : '<span class="tag-des">[Deseable]</span>';
+
+        panel.innerHTML = `
+            <div class="assessment-area">
+                <span class="category-tag">${urs.cat}</span>
+                <h2>${urs.id}: Verificación Individual</h2>
+                <p class="urs-requirement"><strong>Requisito Exigido:</strong> ${urs.desc} ${classTag}</p>
+
+                <div class="data-comparison">
+                    <div class="data-block">
+                        <strong>Referencia Esperada (URS/OC/Manual):</strong>
+                        <div class="data-text">${urs.ref}</div>
+                    </div>
+                    <div class="data-block">
+                        <strong>Encontrado Físicamente / Observado (Simulación):</strong>
+                        <div class="data-text">${urs.found}</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="decision-group">
+                        <label class="decision-label">Decisión de Auditoría (IQ):</label>
+                        <div class="btn-group">
+                            <button class="btn-check ${decision === 'Pasa' ? 'active-pasa' : ''}" onclick="makeDecision('Pasa')">✔ PASA</button>
+                            <button class="btn-check ${decision === 'Falla' ? 'active-falla' : ''}" onclick="makeDecision('Falla')">✖ FALLA</button>
+                        </div>
+                    </div>
+                    
+                    <div class="comment-group">
+                        <label for="urs-comment">Comentarios / Observaciones de la Desviación:</label>
+                        <textarea id="urs-comment" placeholder="Documente por qué cumple o por qué falla (No Conformidad)...">${comment}</textarea>
+                    </div>
+
+                    <button class="btn-register" onclick="registerFinding()">Registrar Hallazgo en el Protocolo</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // --- Funciones de Interacción ---
+
+    window.makeDecision = function(decision) {
+        // Solo actualizar visualmente los botones por ahora
+        const pasaBtn = document.querySelector('.btn-check:nth-child(1)');
+        const fallaBtn = document.querySelector('.btn-check:nth-child(2)');
+
+        if (decision === 'Pasa') {
+            pasaBtn.classList.add('active-pasa');
+            fallaBtn.classList.remove('active-falla');
+        } else {
+            fallaBtn.classList.add('active-falla');
+            pasaBtn.classList.remove('active-pasa');
+        }
+        // Guardar decisión temporalmente en el DOM para recogerla al registrar
+        document.getElementById('assessment-panel').dataset.tempDecision = decision;
+    }
+
+    window.registerFinding = function() {
+        const ursId = appState.currentUrsId;
+        const urs = ursData.find(u => u.id === ursId);
+        const panel = document.getElementById('assessment-panel');
+        
+        const decision = panel.dataset.tempDecision || appState.decisions[ursId];
+        const comment = document.getElementById('urs-comment').value;
+
+        if (!decision) {
+            alert('Por favor, tome una decisión (Pasa o Falla) antes de registrar.');
+            return;
+        }
+
+        // Actualizar Estado de la App
+        appState.decisions[ursId] = decision;
+        appState.comments[ursId] = comment;
+
+        // Registrar en el Log si es Falla o tiene comentario
+        if (decision === 'Falla' || comment.trim() !== '') {
+            addToDeficiencyLog(urs, decision, comment);
+        }
+
+        // Actualizar Progreso
+        updateProgress();
+
+        // Mover al siguiente ítem automáticamente
+        const currentIndex = ursData.findIndex(u => u.id === ursId);
+        if (currentIndex < ursData.length - 1) {
+            selectURS(ursData[currentIndex + 1].id);
+        } else {
+            renderList(); // Solo actualizar lista si es el último
+            alert('Revisión completada. Por favor, proceda a la Conclusión Final al final de la página.');
+            document.getElementById('final-iq-status').scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    function addToDeficiencyLog(urs, decision, comment) {
+        const logContainer = document.getElementById('deficiency-log-container');
+        
+        // Quitar empty state si existe
+        const emptyState = logContainer.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        // Buscar si ya existe la entrada para actualizarla
+        let existingEntry = document.getElementById(`log-${urs.id}`);
+        
+        const entryHtml = `
+            <span class="urs-id">[${urs.id}] (${urs.class})</span> - 
+            <strong>Ref:</strong> ${urs.ref} vs. 
+            <strong>Enc:</strong> ${urs.found}. 
+            <em>Obs: ${comment || 'Sin comentarios.'}</em>
+        `;
+
+        if (existingEntry) {
+            existingEntry.className = `log-entry ${decision === 'Falla' ? 'falla' : ''}`;
+            existingEntry.innerHTML = entryHtml;
+        } else {
+            const logEntry = document.createElement('div');
+            logEntry.id = `log-${urs.id}`;
+            logEntry.className = `log-entry ${decision === 'Falla' ? 'falla' : ''}`;
+            logEntry.innerHTML = entryHtml;
+            logContainer.appendChild(logEntry);
+        }
+    }
+
+    function updateProgress() {
+        let pasa = 0;
+        let falla = 0;
+        let completed = 0;
+
+        ursData.forEach(urs => {
+            const decision = appState.decisions[urs.id];
+            if (decision) {
+                completed++;
+                if (decision === 'Pasa') pasa++;
+                else falla++;
+            }
+        });
+
+        // Actualizar DOM
+        document.getElementById('completed-count').innerText = completed;
+        document.getElementById('pasa-count').innerText = pasa;
+        document.getElementById('falla-count').innerText = falla;
+        
+        const progressPercent = (completed / ursData.length) * 100;
+        document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+        // Habilitar conclusión final si está completo
+        const finalStatus = document.getElementById('final-iq-status');
+        const finalJust = document.getElementById('final-justification');
+
+        if (completed === ursData.length) {
+            finalStatus.disabled = false;
+            finalJust.disabled = false;
+            
+            // Sugerir estado final
+            if (falla === 0) {
+                finalStatus.value = 'Aprobado';
+                finalJust.value = 'Todos los requisitos de usuario obligatorios y deseables han sido verificados satisfactoriamente. El equipo se considera correctamente instalado.';
+            } else {
+                // Verificar si hay fallas en Obligatorios
+                let fallaObligatorio = ursData.some(urs => appState.decisions[urs.id] === 'Falla' && urs.class === 'Obligatorio');
+                if (fallaObligatorio) {
+                    finalStatus.value = 'Rechazado';
+                    finalJust.value = 'Se han detectado fallas en requerimientos críticos (OBLIGATORIOS). La instalación no es segura o apta para el uso. Ver log de deficiencias.';
+                } else {
+                    finalStatus.value = 'Aprobado Condicionado';
+                    finalJust.value = 'Se han detectado fallas solo en requerimientos DESEABLES. El equipo es funcional, pero se requiere el cierre de las desviaciones documentadas antes del OQ.';
+                }
+            }
+        } else {
+            finalStatus.disabled = true;
+            finalJust.disabled = true;
+            finalStatus.value = 'Pendiente';
+            finalJust.value = '';
+        }
+    }
+
+</script>
+</body>
+</html>
