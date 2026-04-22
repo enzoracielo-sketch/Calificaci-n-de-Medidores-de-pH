@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Calificación DQ - Medidor de pH (23 URS)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; color: #333; }
+        .header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+        .progress-container { width: 80%; margin: 10px auto; background: #ecf0f1; border-radius: 10px; overflow: hidden; height: 20px; }
+        .progress-bar { height: 100%; background: #27ae60; width: 0%; transition: width 0.3s; }
+        .dashboard { display: flex; max-width: 1200px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; height: 75vh; }
+        .sidebar { width: 35%; background: #f8f9fa; border-right: 1px solid #ddd; overflow-y: auto; }
+        .urs-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .urs-item:hover { background: #e9ecef; }
+        .urs-item.active { background: #dceefb; border-left: 4px solid #3498db; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; }
+        .badge.Pendiente { background: #f39c12; color: #fff; }
+        .badge.Cumple { background: #2ecc71; color: #fff; }
+        .badge.Falla { background: #e74c3c; color: #fff; }
+        .main-panel { width: 65%; padding: 25px; overflow-y: auto; }
+        h3 { color: #2c3e50; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #555; }
+        input[type="number"], input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 10px; transition: opacity 0.2s; }
+        button:hover { opacity: 0.8; }
+        .btn-calc { background: #3498db; color: white; width: 100%; margin-top: 10px; }
+        .btn-approve { background: #2ecc71; color: white; }
+        .btn-reject { background: #e74c3c; color: white; }
+        .status-alert { margin-top: 20px; padding: 15px; border-radius: 4px; text-align: center; font-weight: bold; display: none; }
+        .empty-state { text-align: center; color: #999; margin-top: 100px; font-size: 1.2em; }
+        .tag-ob { color: #c0392b; font-weight: bold; font-size: 0.9em; }
+        .tag-des { color: #2980b9; font-weight: bold; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2 style="margin:0 0 10px 0;">Panel Maestro de Calificación de Diseño (DQ)</h2>
+        <p style="margin:0;">Progreso General: <span id="progress-text">0 / 23</span> Requisitos Verificados</p>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="sidebar" id="urs-list"></div>
+        <div class="main-panel" id="detail-panel">
+            <div class="empty-state">
+                Selecciona un requerimiento de la lista izquierda para comenzar la verificación de la Calificación de Diseño.
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Base de datos de los 23 Requisitos de Usuario
+    const ursData = [
+        { id: 'REQ-01', cat: 'Rendimiento', desc: 'Rango de pH: 0.00 a 14.00 pH', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-02', cat: 'Rendimiento', desc: 'Resolución de pH: Mínima de 0.01 pH', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-03', cat: 'Rendimiento', desc: 'Precisión de pH: ±0.01 pH o mejor', class: 'Obligatorio', type: 'math', tol: 0.01 },
+        { id: 'REQ-04', cat: 'Rendimiento', desc: 'Rango de Temperatura: 0 a 100°C', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-05', cat: 'Rendimiento', desc: 'Precisión de Temp: ±0.5°C', class: 'Obligatorio', type: 'math', tol: 0.5 },
+        { id: 'REQ-06', cat: 'Rendimiento', desc: 'Compensación Auto (ATC)', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-07', cat: 'Rendimiento', desc: 'Calibración: Al menos 3 puntos', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-08', cat: 'Rendimiento', desc: 'Reconocimiento de Buffers', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-09', cat: 'Facilidad Uso', desc: 'Pantalla LCD retroiluminada', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-10', cat: 'Facilidad Uso', desc: 'Registro de Datos (fecha/hora)', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-11', cat: 'Facilidad Uso', desc: 'Compatibilidad con GLP', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-12', cat: 'Facilidad Uso', desc: 'Conexión BNC estándar', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-13', cat: 'Facilidad Uso', desc: 'Sonda de Temperatura incluida', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-14', cat: 'Portabilidad', desc: 'Factor de Forma definido', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-15', cat: 'Portabilidad', desc: 'Fuente de Alimentación', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-16', cat: 'Software', desc: 'Conectividad: USB/RS232', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-17', cat: 'Software', desc: 'Exportación a Excel/PDF', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-18', cat: 'Software', desc: 'Seguridad y Contraseñas', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-19', cat: 'Documentación', desc: 'Manual en español', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-20', cat: 'Soporte', desc: 'Certificado de Calibración', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-21', cat: 'Soporte', desc: 'Garantía mínima de 1 año', class: 'Obligatorio', type: 'audit' },
+        { id: 'REQ-22', cat: 'Soporte', desc: 'Soporte Técnico local', class: 'Deseable', type: 'audit' },
+        { id: 'REQ-23', cat: 'Regulatorio', desc: 'Cumplimiento Normas CE', class: 'Obligatorio', type: 'audit' }
+    ];
+
+    const TOTAL_URS = 23;
+    let states = {};
+    ursData.forEach(urs => states[urs.id] = 'Pendiente');
+    let currentId = null;
+
+    const listEl = document.getElementById('urs-list');
+    const panelEl = document.getElementById('detail-panel');
+    const progressText = document.getElementById('progress-text');
+    const progressBar = document.getElementById('progress-bar');
+
+    function renderList() {
+        listEl.innerHTML = '';
+        let completed = 0;
+
+        ursData.forEach(urs => {
+            let status = states[urs.id];
+            if(status !== 'Pendiente') completed++;
+
+            let div = document.createElement('div');
+            div.className = `urs-item ${currentId === urs.id ? 'active' : ''}`;
+            div.innerHTML = `
+                <div>
+                    <strong>${urs.id}</strong> <br>
+                    <span style="font-size: 0.8em; color: #777;">${urs.cat}</span>
+                </div>
+                <span class="badge ${status}">${status}</span>
+            `;
+            div.onclick = () => selectUrs(urs);
+            listEl.appendChild(div);
+        });
+
+        progressText.innerText = `${completed} / ${TOTAL_URS}`;
+        progressBar.style.width = `${(completed / TOTAL_URS) * 100}%`;
+    }
+
+    function selectUrs(urs) {
+        currentId = urs.id;
+        renderList();
+
+        let classTag = urs.class === 'Obligatorio' ? `<span class="tag-ob">[Obligatorio]</span>` : `<span class="tag-des">[Deseable]</span>`;
+
+        let html = `<h3>Evaluación: ${urs.id} - ${urs.cat}</h3>`;
+        html += `<p style="font-size: 1.1em; color: #2980b9;"><strong>Requisito Exigido:</strong> ${urs.desc} ${classTag}</p>`;
+
+        if (urs.type === 'math') {
+            html += `
+                <div class="form-group">
+                    <label>Tolerancia Permitida (Según URS): ±${urs.tol}</label>
+                    <label>Valor de Referencia (Simulado, Patrón):</label>
+                    <input type="number" id="valRef" value="7.00" step="0.01">
+                    
+                    <label style="margin-top: 15px;">Valor Medido por el Equipo (Simulado):</label>
+                    <input type="number" id="valRead" value="7.00" step="0.01">
+                    
+                    <button class="btn-calc" onclick="calculateMath('${urs.id}', ${urs.tol})">Calcular Desviación y Evaluar</button>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="form-group">
+                    <label>Inspección de Ficha Técnica / Manual (Simulación):</label>
+                    <input type="text" placeholder="Ej. El manual en la página 12 indica que cumple con..." id="auditNotes">
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn-approve" onclick="setStatus('${urs.id}', 'Cumple')">✔ Aprobar (Cumple)</button>
+                    <button class="btn-reject" onclick="setStatus('${urs.id}', 'Falla')">✖ Rechazar (No Cumple)</button>
+                </div>
+            `;
+        }
+
+        html += `<div id="statusAlert" class="status-alert"></div>`;
+        panelEl.innerHTML = html;
+        
+        if(states[urs.id] !== 'Pendiente') {
+            showStatusAlert(states[urs.id] === 'Cumple', urs.class);
+        }
+    }
+
+    window.calculateMath = function(id, tol) {
+        let ref = parseFloat(document.getElementById('valRef').value);
+        let read = parseFloat(document.getElementById('valRead').value);
+        let diff = Math.abs(ref - read);
+        let ursObj = ursData.find(u => u.id === id);
+
+        let passed = diff <= tol;
+        setStatus(id, passed ? 'Cumple' : 'Falla');
+        
+        let alert = document.getElementById('statusAlert');
+        alert.innerHTML = `Desviación calculada: <strong>${diff.toFixed(3)}</strong>.<br>Límite permitido: ±${tol}.<br><br>Resultado: ${passed ? 'CUMPLE URS' : 'NO CUMPLE URS'}`;
+        if (!passed && ursObj.class === 'Obligatorio') {
+            alert.innerHTML += `<br><br><span style="color:#c0392b;"><strong>Alerta Crítica:</strong> Falla en requerimiento OBLIGATORIO.</span>`;
+        }
+    }
+
+    window.setStatus = function(id, status) {
+        states[id] = status;
+        let ursObj = ursData.find(u => u.id === id);
+        renderList();
+        showStatusAlert(status === 'Cumple', ursObj.class);
+    }
+
+    function showStatusAlert(passed, classification) {
+        let alert = document.getElementById('statusAlert');
+        alert.style.display = 'block';
+        if(passed) {
+            alert.style.background = '#d4edda';
+            alert.style.color = '#155724';
+            alert.style.border = '1px solid #c3e6cb';
+            if(!alert.innerHTML.includes("Desviación")) alert.innerHTML = "✔ REQUISITO APROBADO SATISFACTORIAMENTE";
+        } else {
+            alert.style.background = '#f8d7da';
+            alert.style.color = '#721c24';
+            alert.style.border = '1px solid #f5c6cb';
+            if(!alert.innerHTML.includes("Desviación")) {
+                alert.innerHTML = "✖ REQUISITO RECHAZADO / DOCUMENTAR DESVIACIÓN";
+                if(classification === 'Obligatorio') {
+                    alert.innerHTML += `<br><br><span style="color:#c0392b;"><strong>Alerta Crítica:</strong> Falla en requerimiento OBLIGATORIO.</span>`;
+                }
+            }
+        }
+    }
+
+    // Iniciar la aplicación
+    renderList();
+</script>
+</body>
+</html>
