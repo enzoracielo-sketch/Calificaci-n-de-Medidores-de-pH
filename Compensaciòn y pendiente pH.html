@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEVA Metrología - Simuladores Interactivos</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .header { text-align: center; background-color: #2980b9; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #ddd; border: none; border-radius: 5px; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { background-color: #27ae60; color: white; }
+        .container { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto; }
+        .container.active { display: flex; gap: 20px; flex-wrap: wrap; }
+        .panel-control { flex: 1; min-width: 300px; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .panel-grafico { flex: 2; min-width: 500px; }
+        label { font-weight: bold; display: block; margin-top: 10px; }
+        input[type="range"] { width: 100%; margin: 10px 0; }
+        .result-box { background: #e8f4f8; border-left: 4px solid #3498db; padding: 10px; margin-top: 15px; font-size: 18px; }
+        .error-box { background: #fae5e5; border-left: 4px solid #e74c3c; padding: 10px; margin-top: 15px; font-size: 18px; font-weight: bold; color: #c0392b;}
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        input[type="number"] { width: 60px; text-align: center; padding: 4px; }
+        .toggle-container { margin: 15px 0; font-size: 18px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Simuladores de Metrología Analítica (pH)</h1>
+        <p>Herramientas interactivas para calificación de equipos y Troubleshooting</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('tab-atc')">Compensación ATC</button>
+        <button class="tab-btn" onclick="showTab('tab-pendientes')">Pendiente Real vs Teórica</button>
+    </div>
+
+    <div id="tab-atc" class="container active">
+        <div class="panel-control">
+            <h3>Controles de la Muestra</h3>
+            <label>Temperatura de la Solución: <span id="atc-temp-val">60</span> °C</label>
+            <input type="range" id="atc-temp" min="0" max="100" value="60" oninput="updateATC()">
+            
+            <label>pH Químico Real (Muestra): <span id="atc-ph-val">4.00</span></label>
+            <input type="range" id="atc-ph" min="0" max="14" step="0.1" value="4.0" oninput="updateATC()">
+            
+            <div class="toggle-container">
+                <label for="atc-toggle">Estado del Módulo ATC:</label>
+                <select id="atc-toggle" onchange="updateATC()" style="padding: 5px; font-size: 16px;">
+                    <option value="off">APAGADO (Asume 25°C)</option>
+                    <option value="on">ENCENDIDO (Compensa Temp)</option>
+                </select>
+            </div>
+
+            <div class="result-box">
+                <p>Pendiente a Temp Actual: <strong id="res-st">0.00</strong> mV/pH</p>
+                <p>Señal Física Generada: <strong id="res-mv">0.00</strong> mV</p>
+                <p>pH Leído por el Equipo: <strong id="res-ph-leido">0.00</strong></p>
+            </div>
+            
+            <div class="error-box" id="res-error-box">
+                Error de Medición: <span id="res-error">0.00</span> pH
+            </div>
+        </div>
+        <div class="panel-grafico">
+            <canvas id="chartATC"></canvas>
+        </div>
+    </div>
+
+    <div id="tab-pendientes" class="container">
+        <div class="panel-control">
+            <h3>Datos de Calibración</h3>
+            <label>Temperatura de Medición: <span id="pen-temp-val">25</span> °C</label>
+            <input type="range" id="pen-temp" min="5" max="80" value="25" oninput="updatePendientes()">
+            
+            <table>
+                <tr><th>Punto</th><th>pH Nominal</th><th>Lectura (mV)</th></tr>
+                <tr><td>Buffer 1</td><td><input type="number" id="p1-ph" value="4.00" oninput="updatePendientes()"></td><td><input type="number" id="p1-mv" value="174.0" oninput="updatePendientes()"></td></tr>
+                <tr><td>Buffer 2</td><td><input type="number" id="p2-ph" value="7.00" oninput="updatePendientes()"></td><td><input type="number" id="p2-mv" value="2.0" oninput="updatePendientes()"></td></tr>
+                <tr><td>Buffer 3</td><td><input type="number" id="p3-ph" value="10.00" oninput="updatePendientes()"></td><td><input type="number" id="p3-mv" value="-170.0" oninput="updatePendientes()"></td></tr>
+            </table>
+
+            <div class="result-box">
+                <p>Pendiente Teórica: <strong id="pen-teo">59.16</strong> mV/pH</p>
+                <p>Pendiente Real (Regresión): <strong id="pen-real">0.00</strong> mV/pH</p>
+                <p>Eficiencia del Electrodo: <strong id="pen-efi" style="font-size: 24px; color: #27ae60;">0.00%</strong></p>
+            </div>
+        </div>
+        <div class="panel-grafico">
+            <canvas id="chartPendientes"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Lógica de Pestañas
+        function showTab(tabId) {
+            document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Variables Globales de Gráficos
+        let chartATC, chartPendientes;
+
+        // --- LÓGICA SIMULADOR ATC ---
+        function initATCChart() {
+            const ctx = document.getElementById('chartATC').getContext('2d');
+            chartATC = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        { label: 'Ref Teórica (25°C)', data: [{x:0, y:414.12}, {x:14, y:-414.12}], type: 'line', borderColor: '#95a5a6', borderDash: [5, 5], fill: false },
+                        { label: 'Comportamiento Físico (Temp Actual)', data: [], type: 'line', borderColor: '#e67e22', fill: false, borderWidth: 2 },
+                        { label: 'Señal de Muestra (mV)', data: [], backgroundColor: '#c0392b', pointRadius: 8 },
+                        { label: 'Lectura Interpretada', data: [], backgroundColor: '#3498db', pointRadius: 6, pointStyle: 'rectRot' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { x: { type: 'linear', position: 'bottom', min: 0, max: 14, title: {display: true, text: 'pH'} },
+                              y: { min: -500, max: 500, title: {display: true, text: 'Milivoltios (mV)'} } }
+                }
+            });
+        }
+
+        function updateATC() {
+            let temp = parseFloat(document.getElementById('atc-temp').value);
+            let phReal = parseFloat(document.getElementById('atc-ph').value);
+            let atcOn = document.getElementById('atc-toggle').value === 'on';
+
+            document.getElementById('atc-temp-val').innerText = temp;
+            document.getElementById('atc-ph-val').innerText = phReal.toFixed(2);
+
+            let sTeorica25 = 59.16;
+            let sActual = 0.1984 * (temp + 273.15); // Pendiente Nernstiana actual
+            let mvGenerados = (7.00 - phReal) * sActual; // Lo que manda el bulbo de vidrio
+
+            let phLeido = 0;
+            if(atcOn) {
+                phLeido = 7.00 - (mvGenerados / sActual);
+            } else {
+                phLeido = 7.00 - (mvGenerados / sTeorica25); // El equipo se equivoca al dividir
+            }
+
+            let error = phLeido - phReal;
+
+            // Actualizar UI Textos
+            document.getElementById('res-st').innerText = sActual.toFixed(2);
+            document.getElementById('res-mv').innerText = mvGenerados.toFixed(2);
+            document.getElementById('res-ph-leido').innerText = phLeido.toFixed(2);
+            document.getElementById('res-error').innerText = error.toFixed(2);
+
+            if(Math.abs(error) > 0.05) {
+                document.getElementById('res-error-box').style.background = '#fae5e5';
+            } else {
+                document.getElementById('res-error-box').style.background = '#e8f4f8';
+            }
+
+            // Actualizar Gráfica
+            chartATC.data.datasets[1].data = [{x: 0, y: 7*sActual}, {x: 14, y: -7*sActual}]; // Línea Naranja
+            chartATC.data.datasets[2].data = [{x: phReal, y: mvGenerados}]; // Punto Rojo
+            chartATC.data.datasets[3].data = [{x: phLeido, y: mvGenerados}]; // Cuadro Azul
+            chartATC.update();
+        }
+
+        // --- LÓGICA SIMULADOR PENDIENTES ---
+        function initPendientesChart() {
+            const ctx = document.getElementById('chartPendientes').getContext('2d');
+            chartPendientes = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        { label: 'Pendiente Teórica (Ideal)', data: [], type: 'line', borderColor: '#3498db', borderDash: [5, 5], fill: false },
+                        { label: 'Pendiente Real (Ajuste)', data: [], type: 'line', borderColor: '#27ae60', fill: false, borderWidth: 2 },
+                        { label: 'Lecturas Buffers', data: [], backgroundColor: '#e74c3c', pointRadius: 7 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { x: { type: 'linear', position: 'bottom', min: 2, max: 12, title: {display: true, text: 'pH'} },
+                              y: { min: -350, max: 350, title: {display: true, text: 'Milivoltios (mV)'} } }
+                }
+            });
+        }
+
+        // Función matemática para regresión lineal simple (Least Squares)
+        function calcLineal(x, y) {
+            let n = x.length; let sum_x = 0; let sum_y = 0; let sum_xy = 0; let sum_xx = 0;
+            for (let i = 0; i < n; i++) {
+                sum_x += x[i]; sum_y += y[i]; sum_xy += (x[i]*y[i]); sum_xx += (x[i]*x[i]);
+            }
+            let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
+            let intercept = (sum_y - slope * sum_x) / n;
+            return { slope: slope, intercept: intercept };
+        }
+
+        function updatePendientes() {
+            let temp = parseFloat(document.getElementById('pen-temp').value);
+            document.getElementById('pen-temp-val').innerText = temp;
+
+            let sTeorica = 0.1984 * (temp + 273.15);
+            document.getElementById('pen-teo').innerText = sTeorica.toFixed(2);
+
+            let x = [parseFloat(document.getElementById('p1-ph').value), parseFloat(document.getElementById('p2-ph').value), parseFloat(document.getElementById('p3-ph').value)];
+            let y = [parseFloat(document.getElementById('p1-mv').value), parseFloat(document.getElementById('p2-mv').value), parseFloat(document.getElementById('p3-mv').value)];
+
+            let reg = calcLineal(x, y);
+            let sReal = Math.abs(reg.slope);
+            let efi = (sReal / sTeorica) * 100;
+
+            document.getElementById('pen-real').innerText = sReal.toFixed(2);
+            document.getElementById('pen-efi').innerText = efi.toFixed(1) + "%";
+            document.getElementById('pen-efi').style.color = efi >= 95 ? "#27ae60" : "#c0392b";
+
+            // Puntos para gráficas
+            chartPendientes.data.datasets[0].data = [{x: 0, y: 7*sTeorica}, {x: 14, y: -7*sTeorica}]; // Pasa por 7,0
+            
+            // Proyección de la línea real
+            let y0 = reg.slope * 0 + reg.intercept;
+            let y14 = reg.slope * 14 + reg.intercept;
+            chartPendientes.data.datasets[1].data = [{x: 0, y: y0}, {x: 14, y: y14}];
+            
+            chartPendientes.data.datasets[2].data = [{x: x[0], y: y[0]}, {x: x[1], y: y[1]}, {x: x[2], y: y[2]}];
+            
+            chartPendientes.update();
+        }
+
+        // Inicializar al cargar
+        window.onload = function() {
+            initATCChart();
+            initPendientesChart();
+            updateATC();
+            updatePendientes();
+        };
+    </script>
+</body>
+</html>
