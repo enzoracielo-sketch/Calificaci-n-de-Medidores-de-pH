@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Tiempo de Respuesta - pH</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .header { text-align: center; background-color: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { display: flex; gap: 20px; flex-wrap: wrap; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 1100px; margin: 0 auto; }
+        .panel-control { flex: 1; min-width: 300px; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
+        .panel-grafico { flex: 2; min-width: 550px; display: flex; flex-direction: column; align-items: center; }
+        
+        label { font-weight: bold; display: block; margin-top: 15px; color: #2c3e50; }
+        select, button { width: 100%; padding: 10px; margin-top: 5px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+        
+        .btn-start { background-color: #27ae60; color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 25px; transition: 0.3s; }
+        .btn-start:hover { background-color: #219653; }
+        .btn-start:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        
+        /* Estilos del Temporizador y Dictamen */
+        .timer-display { font-size: 64px; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #34495e; margin: 10px 0; letter-spacing: 2px; }
+        .status-box { width: 100%; text-align: center; padding: 15px; font-size: 20px; font-weight: bold; border-radius: 5px; margin-top: 10px; opacity: 0; transition: opacity 0.5s; }
+        
+        .status-pass { background-color: #d4efdf; color: #1e8449; border: 2px solid #27ae60; opacity: 1; }
+        .status-fail { background-color: #fadbd8; color: #c0392b; border: 2px solid #e74c3c; opacity: 1; }
+        
+        canvas { width: 100% !important; max-height: 400px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Prueba Dinámica: Tiempo de Respuesta</h1>
+        <p>Evaluación de la salud de la membrana de vidrio y la unión líquida (PQ)</p>
+    </div>
+
+    <div class="container">
+        <div class="panel-control">
+            <h3>Parámetros de la Prueba</h3>
+            
+            <label for="buf-ini">1. Buffer de Origen (Acondicionamiento):</label>
+            <select id="buf-ini">
+                <option value="4">Buffer pH 4.00</option>
+                <option value="7">Buffer pH 7.00</option>
+                <option value="10">Buffer pH 10.00</option>
+            </select>
+
+            <label for="buf-fin">2. Buffer de Destino (Prueba):</label>
+            <select id="buf-fin">
+                <option value="10" selected>Buffer pH 10.00</option>
+                <option value="7">Buffer pH 7.00</option>
+                <option value="4">Buffer pH 4.00</option>
+            </select>
+
+            <label for="estado-elec">3. Salud Clínica del Electrodo:</label>
+            <select id="estado-elec">
+                <option value="nuevo">A. Nuevo / Óptimas Condiciones</option>
+                <option value="desgastado">B. Uso Normal (Desgaste Medio)</option>
+                <option value="obstruido">C. Diafragma Obstruido / Envejecido</option>
+            </select>
+
+            <button id="btn-iniciar" class="btn-start" onclick="iniciarPrueba()">INICIAR PRUEBA (Sacar electrodo)</button>
+        </div>
+
+        <div class="panel-grafico">
+            <div class="timer-display" id="timer">00.0 s</div>
+            <canvas id="chartRespuesta"></canvas>
+            <div id="dictamen" class="status-box">ESPERANDO...</div>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+        let intervaloSimulacion;
+        let tiempoActual = 0; // en segundos
+        let datosGrafica = [];
+        
+        // Inicializar la gráfica vacía
+        function initChart(minY, maxY) {
+            const ctx = document.getElementById('chartRespuesta').getContext('2d');
+            if(chart) chart.destroy();
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Lectura del Electrodo (pH)',
+                        data: datosGrafica,
+                        borderColor: '#2980b9',
+                        borderWidth: 3,
+                        pointRadius: 0, // Ocultar los puntos para que parezca una línea continua de osciloscopio
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    animation: false, // Apagamos la animación nativa porque la animaremos cuadro por cuadro
+                    scales: {
+                        x: { type: 'linear', min: 0, max: 120, title: { display: true, text: 'Tiempo (segundos)' } },
+                        y: { min: minY, max: maxY, title: { display: true, text: 'Lectura (pH)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function iniciarPrueba() {
+            // Leer parámetros
+            let bIni = parseFloat(document.getElementById('buf-ini').value);
+            let bFin = parseFloat(document.getElementById('buf-fin').value);
+            let estado = document.getElementById('estado-elec').value;
+
+            // Validar que no sean el mismo buffer
+            if(bIni === bFin) {
+                alert("Para medir el tiempo de respuesta, el electrodo debe saltar a un buffer diferente.");
+                return;
+            }
+
+            // Preparar UI
+            document.getElementById('btn-iniciar').disabled = true;
+            document.getElementById('btn-iniciar').innerText = "MIDIENDO...";
+            let dictamenBox = document.getElementById('dictamen');
+            dictamenBox.className = 'status-box'; // Quitar colores
+            
+            // Configurar gráfica
+            let margen = 1.5;
+            let minY = Math.min(bIni, bFin) - margen;
+            let maxY = Math.max(bIni, bFin) + margen;
+            datosGrafica = [];
+            initChart(minY, maxY);
+
+            tiempoActual = 0;
+            
+            // Constantes matemáticas según la salud del electrodo
+            // 'k' es la velocidad de absorción. Entre más grande, más rápido se estabiliza.
+            let k = 0; 
+            let factorRuido = 0;
+
+            if(estado === 'nuevo') {
+                k = 0.35; // Rápido, se estabiliza en ~15s
+                factorRuido = 0.002;
+            } else if (estado === 'desgastado') {
+                k = 0.12; // Medio, se estabiliza en ~40s
+                factorRuido = 0.01;
+            } else if (estado === 'obstruido') {
+                k = 0.045; // Lento, se estabiliza en ~95s
+                factorRuido = 0.04; // Mucho ruido eléctrico por el diafragma tapado
+            }
+
+            let estabilidadAlcanzada = false;
+            let tiempoEstable = 0;
+
+            // Bucle de Simulación (Se ejecuta cada 100 milisegundos)
+            intervaloSimulacion = setInterval(() => {
+                tiempoActual += 0.1;
+                let valorPH = bIni;
+
+                // A los 3 segundos, simulamos que introducen el electrodo en el nuevo buffer
+                if (tiempoActual >= 3) {
+                    let tiempoEfectivo = tiempoActual - 3;
+                    
+                    // Función exponencial asintótica: y = Final - (Diferencia) * e^(-kt)
+                    let baseMatematica = bFin - ((bFin - bIni) * Math.exp(-k * tiempoEfectivo));
+                    
+                    // Añadimos "ruido" aleatorio para simular la realidad analítica
+                    let ruido = (Math.random() - 0.5) * factorRuido;
+                    valorPH = baseMatematica + ruido;
+                }
+
+                // Guardar punto y actualizar gráfica
+                datosGrafica.push({x: tiempoActual, y: valorPH});
+                chart.update();
+
+                // Actualizar Temporizador (1 decimal)
+                document.getElementById('timer').innerText = tiempoActual.toFixed(1) + " s";
+
+                // Evaluar si ya se estabilizó (Criterio: menos de 0.02 pH de distancia de la meta real)
+                if(tiempoActual > 5 && Math.abs(valorPH - bFin) <= 0.02 && !estabilidadAlcanzada) {
+                    // Contamos cuántos ticks (100ms) se mantiene estable. Si está obstruido el ruido lo sacará del rango.
+                    estabilidadAlcanzada = true;
+                    tiempoEstable = tiempoActual;
+                }
+
+                // Si el ruido lo saca del umbral, reiniciamos la estabilidad
+                if(estabilidadAlcanzada && Math.abs(valorPH - bFin) > 0.02) {
+                    estabilidadAlcanzada = false;
+                }
+
+                // Si lleva 3 segundos totalmente estable, o llegamos a los 120s, terminamos la prueba
+                if((estabilidadAlcanzada && (tiempoActual - tiempoEstable) >= 2.0) || tiempoActual >= 120) {
+                    clearInterval(intervaloSimulacion);
+                    finalizarPrueba(tiempoEstable);
+                }
+
+            }, 100); // 100ms
+        }
+
+        function finalizarPrueba(tiempoFinal) {
+            document.getElementById('btn-iniciar').disabled = false;
+            document.getElementById('btn-iniciar').innerText = "INICIAR NUEVA PRUEBA";
+            
+            let dictamenBox = document.getElementById('dictamen');
+            
+            if(tiempoFinal <= 60 && tiempoFinal > 0) {
+                dictamenBox.innerHTML = `DICTAMEN: CONFORME <br><span style='font-size:16px; font-weight:normal;'>Estabilización lograda a los ${tiempoFinal.toFixed(1)} segundos.</span>`;
+                dictamenBox.className = 'status-box status-pass';
+            } else {
+                dictamenBox.innerHTML = `DICTAMEN: NO CONFORME <br><span style='font-size:16px; font-weight:normal;'>Superó los 60 segundos máximos permitidos. Requiere limpieza química o reemplazo.</span>`;
+                dictamenBox.className = 'status-box status-fail';
+            }
+        }
+        
+        // Pintar gráfica vacía al inicio
+        window.onload = () => { initChart(2, 12); };
+    </script>
+</body>
+</html>
