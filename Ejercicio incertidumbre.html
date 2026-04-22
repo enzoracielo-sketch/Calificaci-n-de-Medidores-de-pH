@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Presupuesto de Incertidumbre - Medidor de pH</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --border: #bdc3c7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Encabezado */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 25px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        /* Contenedor Principal */
+        .dashboard {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Panel de Entrada (Izquierda) */
+        .input-panel {
+            width: 300px;
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .input-panel h2 {
+            font-size: 1.1em;
+            color: var(--secondary);
+            margin-top: 0;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        .input-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Panel Central (Tabla y Resultados) */
+        .main-panel {
+            flex-grow: 1;
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .main-panel h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        /* Tabla de Presupuesto */
+        table.budget-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        table.budget-table th, table.budget-table td {
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: center;
+        }
+
+        table.budget-table th {
+            background-color: var(--light);
+            color: var(--secondary);
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+
+        table.budget-table tr:hover {
+            background-color: #fdfefe;
+        }
+
+        .ci-cell { font-weight: bold; color: var(--accent); }
+
+        /* Sección de Resultados Finales */
+        .results-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: auto; /* Empuja hacia abajo */
+        }
+
+        .result-card {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .result-card h3 {
+            margin-top: 0;
+            color: var(--secondary);
+            font-size: 1em;
+            text-transform: uppercase;
+        }
+
+        .result-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8em;
+        }
+
+        .status-pasa { background-color: var(--success); }
+        .status-falla { background-color: var(--danger); }
+
+        .report-box {
+            grid-column: 1 / -1; /* Ocupa todo el ancho */
+            text-align: left;
+            background-color: #eaf2f8;
+            border-left: 5px solid var(--accent);
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Simulador Interactivo: Presupuesto de Incertidumbre (pH)</h1>
+    </header>
+
+    <div class="dashboard">
+        <div class="input-panel">
+            <h2>1. Datos de Entrada (Xi)</h2>
+            
+            <div class="input-group">
+                <label>Lectura Muestra (pH):</label>
+                <input type="number" id="phMuestra" value="7.15" step="0.01" oninput="updateSim()">
+            </div>
+            
+            <div class="input-group">
+                <label>DS Calibración (σcal - pH):</label>
+                <input type="number" id="sigmaCal" value="0.015" step="0.001" oninput="updateSim()">
+            </div>
+
+            <div class="input-group">
+                <label>Resolución Medidor (pH):</label>
+                <input type="number" id="resolucion" value="0.01" step="0.01" oninput="updateSim()">
+            </div>
+
+            <div class="input-group">
+                <label>U Certificada Búfer 7.00 (k=2):</label>
+                <input type="number" id="uB7Cert" value="0.01" step="0.001" oninput="updateSim()">
+            </div>
+
+            <div class="input-group">
+                <label>U Certificada Búfer 4.01 (k=2):</label>
+                <input type="number" id="uB4Cert" value="0.01" step="0.001" oninput="updateSim()">
+            </div>
+
+            <div class="input-group">
+                <label>Efecto Temperatura ATC (±pH):</label>
+                <input type="number" id="efectoT" value="0.005" step="0.001" oninput="updateSim()">
+            </div>
+        </div>
+
+        <div class="main-panel">
+            <h2>2. Presupuesto de Incertidumbre Combinada (uc)</h2>
+            
+            <table class="budget-table">
+                <thead>
+                    <tr>
+                        <th>Fuente de Incertidumbre (Xi)</th>
+                        <th>Valor Absoluto (a)</th>
+                        <th>Distribución</th>
+                        <th>Divisor (k)</th>
+                        <th>u(Xi) (a/k)</th>
+                        <th>Coef. Sensib. (ci)</th>
+                        <th>Contribución (ci·ui)</th>
+                    </tr>
+                </thead>
+                <tbody id="budget-body">
+                    </tbody>
+            </table>
+
+            <div class="results-section">
+                <div class="result-card">
+                    <h3>Incertidumbre Combinada (uc)</h3>
+                    <div class="result-value" id="calcUc">0.0000</div>
+                    <p>pH</p>
+                </div>
+
+                <div class="result-card">
+                    <h3>Factor (k) y Expansión (U)</h3>
+                    <div class="result-value">k=2</div>
+                    <div class="result-value" id="calcU" style="color: var(--accent);">0.00</div>
+                    <p>Incertidumbre Expandida (U)</p>
+                </div>
+
+                <div class="result-card">
+                    <h3>Estado (URS ≤ 0.05)</h3>
+                    <div id="statusBadges" style="margin-top: 20px;">
+                        <span class="status-badge" id="pqStatus">Pendiente</span>
+                    </div>
+                </div>
+
+                <div class="result-card report-box">
+                    <h3>Reporte Final del Resultado</h3>
+                    <p id="finalReport">Esperando actualización...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Lógica del Simulador ---
+
+    // Configuración de las fuentes (basado en el ejercicio)
+    const sourcesConfig = [
+        { id: 'sigmaCal', name: 'Calibración del Sistema (σcal)', dist: 'Normal', k: 1, ci: 1 },
+        { id: 'resolucion', name: 'Resolución del Medidor', dist: 'Rectangular', k: Math.sqrt(3), ci: 1 },
+        { id: 'uB7Cert', name: 'Búfer Referencia 7.00', dist: 'Normal', k: 2, ci: 1 },
+        { id: 'uB4Cert', name: 'Búfer Referencia 4.01', dist: 'Normal', k: 2, ci: 1 },
+        { id: 'efectoT', name: 'Efecto Temperatura (ATC)', dist: 'Rectangular', k: Math.sqrt(3), ci: 1 }
+    ];
+
+    function updateSim() {
+        const tbody = document.getElementById('budget-body');
+        tbody.innerHTML = ''; // Limpiar tabla
+        let sumSqUiCi = 0;
+
+        // 1. Procesar cada fuente
+        sourcesConfig.forEach(source => {
+            const valA = parseFloat(document.getElementById(source.id).value);
+            
+            // Calcular u(Xi) = a/k
+            const uXi = valA / source.k;
+            
+            // Contribución ui = ci * uXi
+            const uiCi = source.ci * uXi;
+            
+            // Suma de cuadrados para uc
+            sumSqUiCi += Math.pow(uiCi, 2);
+
+            // Renderizar fila
+            const row = `
+                <tr>
+                    <td style="text-align: left;">${source.name}</td>
+                    <td>${valA.toFixed(source.id === 'sigmaCal' || source.id === 'efectoT' ? 3 : 2)}</td>
+                    <td>${source.dist}</td>
+                    <td>${source.dist === 'Rectangular' ? '√3' : source.k}</td>
+                    <td>${uXi.toFixed(4)}</td>
+                    <td class="ci-cell">${source.ci}</td>
+                    <td>${uiCi.toFixed(4)}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+
+        // 2. Calcular uc y U
+        const uc = Math.sqrt(sumSqUiCi);
+        const U = 2 * uc; // Factor de cobertura k=2
+
+        // 3. Actualizar Visualización de Resultados
+        document.getElementById('calcUc').innerText = uc.toFixed(4);
+        document.getElementById('calcU').innerText = U.toFixed(2);
+
+        // 4. Validación (URS ≤ 0.05)
+        const pqStatus = document.getElementById('pqStatus');
+        if (U <= 0.05) {
+            pqStatus.innerText = 'PASA';
+            pqStatus.className = 'status-badge status-pasa';
+        } else {
+            pqStatus.innerText = 'FALLA';
+            pqStatus.className = 'status-badge status-falla';
+        }
+
+        // 5. Reporte Final Formateado
+        const phMuestra = parseFloat(document.getElementById('phMuestra').value).toFixed(2);
+        document.getElementById('finalReport').innerText = 
+            `Valor Reportado = ${phMuestra} ± ${U.toFixed(2)} pH (k=2, 95% Confianza).`;
+    }
+
+    // Inicializar al cargar
+    window.onload = updateSim;
+
+</script>
+</body>
+</html>
