@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador: Prueba de Comparación de Potenciales (pH)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; }
+        .control-group { margin-bottom: 15px; padding: 15px; background: #eef2f5; border-radius: 6px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; margin-bottom: 10px; }
+        .buttons { display: flex; gap: 10px; margin-bottom: 10px; }
+        button { flex: 1; padding: 10px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 4px; font-weight: bold; }
+        button:hover { background: #2980b9; }
+        .results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; padding: 15px; background: #fdfefe; border: 1px solid #bdc3c7; border-radius: 6px; }
+        .results div { padding: 8px; border-bottom: 1px solid #ecf0f1; }
+        .results div span { font-weight: bold; float: right; }
+        .status { text-align: center; font-size: 1.2em; font-weight: bold; margin-top: 15px; padding: 10px; border-radius: 4px; }
+        .status.pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        canvas { display: block; margin: 20px auto; background: #fafafa; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Simulador de Calificación (OQ): Comparación de Potenciales</h2>
+    
+    <div class="control-group">
+        <label>Potencial Simulado (mV): <span id="mvVal">0</span> mV</label>
+        <input type="range" id="mvSlider" min="-420" max="420" value="0" step="0.1">
+        
+        <label>Simular Error de Consola (pH): <span id="errVal">0.000</span> pH</label>
+        <input type="range" id="errSlider" min="-0.05" max="0.05" value="0" step="0.001">
+        
+        <label style="margin-top: 10px;">
+            <input type="checkbox" id="showMargin" checked> Mostrar Margen Aceptable (±0.02 pH)
+        </label>
+    </div>
+
+    <div class="buttons">
+        <button onclick="setTestPoint(0)">0 mV (pH 7)</button>
+        <button onclick="setTestPoint(177.48)">+177.48 mV (pH 4)</button>
+        <button onclick="setTestPoint(-177.48)">-177.48 mV (pH 10)</button>
+    </div>
+
+    <div class="results">
+        <div>Potencial Inyectado: <span id="resMv">0 mV</span></div>
+        <div>pH Teórico Ideal: <span id="resIdeal">7.00</span></div>
+        <div>Error Simulado: <span id="resErr">0.000</span></div>
+        <div>pH Mostrado (Lectura): <span id="resRead">7.00</span></div>
+        <div style="grid-column: 1 / -1; text-align: center; border: none; font-size: 1.1em;">
+            Diferencia Absoluta: <span id="resDiff">0.000 pH</span>
+        </div>
+    </div>
+
+    <div id="statusBox" class="status pass">ESTADO: ACEPTABLE (PASA)</div>
+
+    <canvas id="nernstChart" width="600" height="400"></canvas>
+</div>
+
+<script>
+    // Variables y elementos DOM
+    const mvSlider = document.getElementById('mvSlider');
+    const errSlider = document.getElementById('errSlider');
+    const showMargin = document.getElementById('showMargin');
+    const canvas = document.getElementById('nernstChart');
+    const ctx = canvas.getContext('2d');
+
+    const NERNST_SLOPE = 59.16; // mV por unidad de pH a 25°C
+    const TOLERANCE = 0.02; // ±0.02 pH de error permitido
+
+    function updateSimulation() {
+        let mv = parseFloat(mvSlider.value);
+        let error = parseFloat(errSlider.value);
+
+        // Actualizar etiquetas de los controles
+        document.getElementById('mvVal').innerText = mv.toFixed(1);
+        document.getElementById('errVal').innerText = error.toFixed(3);
+
+        // Ecuación de Nernst: E = E0 - S(pH - 7) -> pH = 7 - (E / S)
+        let idealPH = 7 - (mv / NERNST_SLOPE);
+        let readPH = idealPH + error;
+        let diff = Math.abs(idealPH - readPH);
+
+        // Actualizar tabla de resultados
+        document.getElementById('resMv').innerText = mv.toFixed(2) + " mV";
+        document.getElementById('resIdeal').innerText = idealPH.toFixed(3);
+        document.getElementById('resErr').innerText = error.toFixed(3);
+        document.getElementById('resRead').innerText = readPH.toFixed(3);
+        document.getElementById('resDiff').innerText = diff.toFixed(3) + " pH";
+
+        // Actualizar estado Pasa/Falla
+        const statusBox = document.getElementById('statusBox');
+        if (diff <= TOLERANCE) {
+            statusBox.className = "status pass";
+            statusBox.innerText = "ESTADO: ACEPTABLE (CUMPLE OQ)";
+        } else {
+            statusBox.className = "status fail";
+            statusBox.innerText = "ESTADO: FUERA DE RANGO (FALLA OQ)";
+        }
+
+        drawGraph(mv, idealPH, readPH);
+    }
+
+    function setTestPoint(mV) {
+        mvSlider.value = mV;
+        errSlider.value = 0; // Reseteamos el error al cambiar de punto de prueba
+        updateSimulation();
+    }
+
+    // Funciones de dibujo para el Canvas
+    function getX(ph) { return (ph / 14) * canvas.width; }
+    function getY(mv) { return canvas.height - ((mv + 420) / 840) * canvas.height; }
+
+    function drawGraph(currentMv, idealPh, readPh) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Dibujar cuadrícula y ejes
+        ctx.strokeStyle = "#eee";
+        ctx.beginPath();
+        for(let i=0; i<=14; i++) { ctx.moveTo(getX(i), 0); ctx.lineTo(getX(i), canvas.height); }
+        for(let i=-400; i<=400; i+=100) { ctx.moveTo(0, getY(i)); ctx.lineTo(canvas.width, getY(i)); }
+        ctx.stroke();
+
+        ctx.strokeStyle = "#999";
+        ctx.beginPath();
+        ctx.moveTo(getX(7), 0); ctx.lineTo(getX(7), canvas.height); // Eje Y en pH 7
+        ctx.moveTo(0, getY(0)); ctx.lineTo(canvas.width, getY(0)); // Eje X en 0 mV
+        ctx.stroke();
+
+        // Margen de tolerancia
+        if (showMargin.checked) {
+            ctx.fillStyle = "rgba(46, 204, 113, 0.2)";
+            ctx.beginPath();
+            ctx.moveTo(getX(0 - TOLERANCE), getY(414.12)); // pH 0 ideal es 414.12 mV
+            ctx.lineTo(getX(14 - TOLERANCE), getY(-414.12));
+            ctx.lineTo(getX(14 + TOLERANCE), getY(-414.12));
+            ctx.lineTo(getX(0 + TOLERANCE), getY(414.12));
+            ctx.fill();
+        }
+
+        // Línea ideal de Nernst
+        ctx.strokeStyle = "#2c3e50";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(getX(0), getY(414.12));
+        ctx.lineTo(getX(14), getY(-414.12));
+        ctx.stroke();
+
+        // Punto de lectura simulado
+        let currentX = getX(readPh);
+        let currentY = getY(currentMv);
+        
+        ctx.fillStyle = (Math.abs(idealPh - readPh) <= TOLERANCE) ? "#27ae60" : "#c0392b";
+        ctx.beginPath();
+        ctx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.stroke();
+    }
+
+    // Event Listeners
+    mvSlider.addEventListener('input', updateSimulation);
+    errSlider.addEventListener('input', updateSimulation);
+    showMargin.addEventListener('change', updateSimulation);
+
+    // Inicializar
+    updateSimulation();
+</script>
+</body>
+</html>
