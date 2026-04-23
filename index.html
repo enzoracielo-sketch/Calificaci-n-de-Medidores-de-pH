@@ -10,6 +10,7 @@
             --primary: #2c3e50;
             --secondary: #34495e;
             --accent: #2980b9;
+            --urs-color: #8e44ad; /* Color Púrpura para URS */
             --success: #27ae60;
             --light: #f4f7f6;
             --white: #ffffff;
@@ -31,22 +32,18 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
-        header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            letter-spacing: 1px;
-        }
+        header h1 { margin: 0; font-size: 2.3em; letter-spacing: 1px; }
+        header p { opacity: 0.9; font-size: 1.1em; margin-top: 10px; }
 
-        header p {
-            opacity: 0.9;
-            font-size: 1.1em;
-            margin-top: 10px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 40px auto;
-            padding: 0 20px;
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        
+        .section-title { 
+            grid-column: 1 / -1; 
+            border-left: 5px solid var(--accent); 
+            padding-left: 15px; 
+            margin: 20px 0;
+            font-size: 1.5em;
+            color: var(--secondary);
         }
 
         .grid {
@@ -60,202 +57,162 @@
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 8px 15px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.3s ease;
             display: flex;
             flex-direction: column;
             border: 1px solid #e1e8ed;
         }
 
-        .card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
-        }
+        .card:hover { transform: translateY(-8px); box-shadow: 0 12px 20px rgba(0,0,0,0.1); }
 
         .card-image {
-            height: 160px;
-            background-color: #f0f2f5;
+            height: 150px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 4em;
-            color: var(--accent);
+            font-size: 3.5em;
+            color: var(--white);
             position: relative;
             background-size: cover;
             background-position: center;
         }
 
-        /* Simulación de imágenes reales mediante overlays de color y gradientes si no hay fotos */
-        .img-iq { background-image: linear-gradient(rgba(44, 62, 80, 0.1), rgba(44, 62, 80, 0.1)), url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=400'); }
-        .img-oq { background-image: linear-gradient(rgba(44, 62, 80, 0.1), rgba(44, 62, 80, 0.1)), url('https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&q=80&w=400'); }
-        .img-pq { background-image: linear-gradient(rgba(44, 62, 80, 0.1), rgba(44, 62, 80, 0.1)), url('https://images.unsplash.com/photo-1532187863486-abf9d39d6618?auto=format&fit=crop&q=80&w=400'); }
-        .img-calc { background-image: linear-gradient(rgba(44, 62, 80, 0.1), rgba(44, 62, 80, 0.1)), url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400'); }
+        /* Imágenes Realistas con Overlays */
+        .img-urs { background-image: linear-gradient(rgba(142, 68, 173, 0.8), rgba(142, 68, 173, 0.8)), url('https://images.unsplash.com/photo-1454165833767-1316b34463d9?auto=format&fit=crop&q=80&w=400'); }
+        .img-iq { background-image: linear-gradient(rgba(44, 62, 80, 0.7), rgba(44, 62, 80, 0.7)), url('https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80&w=400'); }
+        .img-oq { background-image: linear-gradient(rgba(52, 152, 219, 0.7), rgba(52, 152, 219, 0.7)), url('https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&q=80&w=400'); }
+        .img-pq { background-image: linear-gradient(rgba(39, 174, 96, 0.7), rgba(39, 174, 96, 0.7)), url('https://images.unsplash.com/photo-1532187863486-abf9d39d6618?auto=format&fit=crop&q=80&w=400'); }
 
-        .card-content {
-            padding: 20px;
-            flex-grow: 1;
-            text-align: center;
-        }
-
-        .card-content h3 {
-            margin: 0 0 10px 0;
-            color: var(--primary);
-            font-size: 1.2em;
-        }
-
-        .card-content p {
-            font-size: 0.9em;
-            color: #666;
-            line-height: 1.4;
-        }
+        .card-content { padding: 20px; flex-grow: 1; text-align: center; }
+        .card-content h3 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.1em; }
+        .card-content p { font-size: 0.85em; color: #666; line-height: 1.4; margin: 0; }
 
         .btn {
             display: block;
-            background: var(--accent);
-            color: white;
-            text-decoration: none;
             padding: 12px;
             text-align: center;
             font-weight: bold;
-            transition: background 0.3s;
-            border-radius: 0 0 12px 12px;
+            text-decoration: none;
+            color: white;
+            transition: opacity 0.3s;
         }
+        
+        .btn:hover { opacity: 0.9; }
+        .bg-urs { background: var(--urs-color); }
+        .bg-iq { background: var(--primary); }
+        .bg-oq { background: var(--accent); }
+        .bg-pq { background: var(--success); }
 
-        .btn:hover {
-            background: #1c5982;
-        }
-
-        .tag {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255,255,255,0.9);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.7em;
-            font-weight: bold;
-            color: var(--primary);
-            text-transform: uppercase;
-        }
-
-        footer {
-            text-align: center;
-            padding: 40px;
-            color: #888;
-            font-size: 0.9em;
-        }
+        footer { text-align: center; padding: 40px; color: #888; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>Ecosistema de Calificación Metrológica</h1>
-    <p>Simuladores Interactivos para la Gestión de Calidad y Validación</p>
+    <h1>Portal de Validación SEVA Metrología</h1>
+    <p>Simuladores Interactivos para Calificación de Equipos (V-Model)</p>
 </header>
 
 <div class="container">
     <div class="grid">
         
+        <div class="section-title">Etapas de Calificación (Ciclo de Vida)</div>
+
+        <div class="card">
+            <div class="card-image img-urs">
+                <i class="fas fa-file-signature"></i>
+            </div>
+            <div class="card-content">
+                <h3>Requerimientos de Usuario (URS)</h3>
+                <p>Definición y verificación de las especificaciones críticas que el equipo debe cumplir.</p>
+            </div>
+            <a href="urs.html" class="btn bg-urs">Abrir URS</a>
+        </div>
+
         <div class="card">
             <div class="card-image img-iq">
                 <i class="fas fa-tools"></i>
-                <span class="tag">Fase 1</span>
             </div>
             <div class="card-content">
                 <h3>Calificación de Instalación (IQ)</h3>
-                <p>Verificación de requisitos de usuario, suministros y condiciones ambientales para el medidor de pH.</p>
+                <p>Verificación de suministros, espacio y condiciones ambientales del medidor de pH.</p>
             </div>
-            <a href="Calificación de instalación.html" class="btn">Iniciar IQ</a>
+            <a href="Calificación de instalación.html" class="btn bg-iq">Iniciar IQ</a>
         </div>
 
         <div class="card">
             <div class="card-image img-oq">
                 <i class="fas fa-microchip"></i>
-                <span class="tag">Fase 2</span>
             </div>
             <div class="card-content">
                 <h3>Calificación Operacional (OQ)</h3>
-                <p>Simulación de pruebas funcionales, evaluación de deriva y respuesta electrónica en mV.</p>
+                <p>Evaluación electrónica de la respuesta del procesador y alarmas funcionales.</p>
             </div>
-            <a href="Calificación de operación.html" class="btn">Iniciar OQ</a>
+            <a href="Calificación de operación.html" class="btn bg-oq">Iniciar OQ</a>
         </div>
 
         <div class="card">
             <div class="card-image img-pq">
                 <i class="fas fa-vial"></i>
-                <span class="tag">Fase 3</span>
             </div>
             <div class="card-content">
                 <h3>Calificación de Desempeño (PQ)</h3>
-                <p>Evaluación de linealidad, repetibilidad y precisión con trazabilidad NIST en muestras reales.</p>
+                <p>Evaluación de la respuesta química, linealidad y repetibilidad con muestras.</p>
             </div>
-            <a href="Califiación de Desempeño.html" class="btn">Iniciar PQ</a>
+            <a href="Califiación de Desempeño.html" class="btn bg-pq">Iniciar PQ</a>
         </div>
 
-        <div class="card" style="border: 2px solid var(--success);">
-            <div class="card-image" style="background-color: #e8f6ef;">
-                <i class="fas fa-check-double" style="color: var(--success);"></i>
-                <span class="tag" style="background: var(--success); color: white;">Full</span>
+        <div class="section-title">Análisis Metrológico y Continuidad</div>
+
+        <div class="card">
+            <div class="card-image" style="background: #2c3e50;">
+                <i class="fas fa-chart-pie"></i>
             </div>
             <div class="card-content">
-                <h3>Dictamen Integral (OQ/PQ)</h3>
-                <p>Tablero consolidado para determinar la aptitud del equipo combinando electrónica y química.</p>
+                <h3>Dashboard Integral</h3>
+                <p>Consolidado de resultados OQ/PQ para dictamen de aptitud para el uso.</p>
             </div>
-            <a href="Calificación integral.html" class="btn" style="background: var(--success);">Ver Dashboard</a>
+            <a href="Calificación integral.html" class="btn bg-iq">Ver Resultados</a>
         </div>
 
         <div class="card">
-            <div class="card-image">
-                <i class="fas fa-sync-alt"></i>
-                <span class="tag">Continuo</span>
+            <div class="card-image" style="background: #2980b9;">
+                <i class="fas fa-history"></i>
             </div>
             <div class="card-content">
-                <h3>Gestión Continua (MEQ)</h3>
-                <p>Simulador de mantenimiento del estado calificado, control de cambios y registros de uso.</p>
+                <h3>Mantenimiento del Estado (MEQ)</h3>
+                <p>Control de cambios y monitoreo continuo del desempeño del equipo.</p>
             </div>
-            <a href="MEQ.html" class="btn">Abrir MEQ</a>
+            <a href="MEQ.html" class="btn bg-oq">Abrir MEQ</a>
         </div>
 
         <div class="card">
-            <div class="card-image img-calc">
-                <i class="fas fa-chart-line"></i>
-                <span class="tag">Cálculo</span>
-            </div>
-            <div class="card-content">
-                <h3>Compensación y Pendiente</h3>
-                <p>Análisis de eficiencia del electrodo y cálculo de pendiente (Slope) bajo Nernst.</p>
-            </div>
-            <a href="Compensaciòn y pendiente pH.html" class="btn">Calcular Eficiencia</a>
-        </div>
-
-        <div class="card">
-            <div class="card-image">
+            <div class="card-image" style="background: #7f8c8d;">
                 <i class="fas fa-calculator"></i>
-                <span class="tag">Metrología</span>
             </div>
             <div class="card-content">
-                <h3>Presupuesto de Incertidumbre</h3>
-                <p>Cálculo de incertidumbre expandida (k=2) integrando repetibilidad y resolución.</p>
+                <h3>Incertidumbre de Medida</h3>
+                <p>Simulador de presupuesto de incertidumbre expandida para reportes analíticos.</p>
             </div>
-            <a href="Ejercicio incertidumbre.html" class="btn">Simular Incertidumbre</a>
+            <a href="Ejercicio incertidumbre.html" class="btn" style="background: #7f8c8d;">Calcular U</a>
         </div>
 
         <div class="card">
-            <div class="card-image">
-                <i class="fas fa-vials"></i>
-                <span class="tag">Taller</span>
+            <div class="card-image" style="background: #16a085;">
+                <i class="fas fa-flask"></i>
             </div>
             <div class="card-content">
-                <h3>Simulador de Medición</h3>
-                <p>Animación interactiva del proceso de enjuague, calibración y lectura química.</p>
+                <h3>Simulador de Calibración</h3>
+                <p>Entrenamiento visual interactivo sobre el proceso físico de medición.</p>
             </div>
-            <a href="Medición química.html" class="btn">Abrir Animación</a>
+            <a href="Medición química.html" class="btn" style="background: #16a085;">Iniciar Taller</a>
         </div>
 
     </div>
 </div>
 
 <footer>
-    <p>&copy; 2026 SEVA Metrología | Desarrollado para Capacitación Técnica Especializada</p>
+    <p>&copy; 2026 SEVA Metrología | Director de Consultoría: Ricardo Fabián Durán Valencia</p>
 </footer>
 
 </body>
